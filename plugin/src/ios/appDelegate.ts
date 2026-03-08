@@ -5,7 +5,6 @@
  */
 
 import { ConfigPlugin, withAppDelegate } from 'expo/config-plugins';
-import { getAppKey, getChannel, getApsForProduction } from '../utils/config';
 import { mergeContents } from '../utils/generateCode';
 import { Validator } from '../utils/codeValidator';
 
@@ -98,11 +97,16 @@ const jpushInit = `
     // 开启调试模式
     JPUSHService.setDebugMode()
 
+    let appKey = Bundle.main.object(forInfoDictionaryKey: "JPUSH_APPKEY") as? String ?? ""
+    let channel = Bundle.main.object(forInfoDictionaryKey: "JPUSH_CHANNEL") as? String ?? ""
+    let apsForProduction =
+      (Bundle.main.object(forInfoDictionaryKey: "JPUSH_APS_FOR_PRODUCTION") as? NSNumber)?.boolValue ?? false
+
     // 初始化 JPush
     JPUSHService.setup(withOption: launchOptions,
-                       appKey: "${getAppKey()}",
-                       channel: "${getChannel()}",
-                       apsForProduction: ${getApsForProduction()})
+                       appKey: appKey,
+                       channel: channel,
+                       apsForProduction: apsForProduction)
 
     // 监听自定义消息
     NotificationCenter.default.addObserver(

@@ -4,12 +4,7 @@
  */
 
 import { ConfigPlugin, withAppBuildGradle } from "expo/config-plugins";
-import {
-	getAppKey,
-	getChannel,
-	getPackageName,
-	getVendorChannels,
-} from "../utils/config";
+import { getPackageName, getVendorChannels } from "../utils/config";
 import { mergeContents } from "../utils/generateCode";
 import { Validator } from "../utils/codeValidator";
 
@@ -26,42 +21,47 @@ const getNdkConfig = (): string => {
 /**
  * 生成 manifestPlaceholders 代码
  */
+const gradleEnv = (key: string, fallback = '""'): string =>
+	`System.getenv("${key}") ?: (project.findProperty("${key}") ?: ${fallback})`;
+
 const getManifestPlaceholders = (): string => {
 	const vendorChannels = getVendorChannels();
 	const placeholders: string[] = [
-		`JPUSH_PKGNAME: "${getPackageName()}"`,
-		`JPUSH_APPKEY: "${getAppKey()}"`,
-		`JPUSH_CHANNEL: "${getChannel()}"`,
+		`JPUSH_PKGNAME: ${gradleEnv("JPUSH_PKGNAME", `"${getPackageName()}"`)}`,
+		`JPUSH_APPKEY: ${gradleEnv("JPUSH_APP_KEY")}`,
+		`JPUSH_CHANNEL: ${gradleEnv("JPUSH_CHANNEL")}`,
 	];
 
 	// 添加厂商通道配置
 	if (vendorChannels?.meizu) {
-		placeholders.push(`MEIZU_APPKEY: "${vendorChannels.meizu.appKey}"`);
-		placeholders.push(`MEIZU_APPID: "${vendorChannels.meizu.appId}"`);
+		placeholders.push(`MEIZU_APPKEY: ${gradleEnv("JPUSH_MEIZU_APP_KEY")}`);
+		placeholders.push(`MEIZU_APPID: ${gradleEnv("JPUSH_MEIZU_APP_ID")}`);
 	}
 
 	if (vendorChannels?.xiaomi) {
-		placeholders.push(`XIAOMI_APPID: "${vendorChannels.xiaomi.appId}"`);
-		placeholders.push(`XIAOMI_APPKEY: "${vendorChannels.xiaomi.appKey}"`);
+		placeholders.push(`XIAOMI_APPID: ${gradleEnv("JPUSH_XIAOMI_APP_ID")}`);
+		placeholders.push(`XIAOMI_APPKEY: ${gradleEnv("JPUSH_XIAOMI_APP_KEY")}`);
 	}
 
 	if (vendorChannels?.oppo) {
-		placeholders.push(`OPPO_APPKEY: "${vendorChannels.oppo.appKey}"`);
-		placeholders.push(`OPPO_APPID: "${vendorChannels.oppo.appId}"`);
-		placeholders.push(`OPPO_APPSECRET: "${vendorChannels.oppo.appSecret}"`);
+		placeholders.push(`OPPO_APPKEY: ${gradleEnv("JPUSH_OPPO_APP_KEY")}`);
+		placeholders.push(`OPPO_APPID: ${gradleEnv("JPUSH_OPPO_APP_ID")}`);
+		placeholders.push(
+			`OPPO_APPSECRET: ${gradleEnv("JPUSH_OPPO_APP_SECRET")}`,
+		);
 	}
 
 	if (vendorChannels?.vivo) {
-		placeholders.push(`VIVO_APPKEY: "${vendorChannels.vivo.appKey}"`);
-		placeholders.push(`VIVO_APPID: "${vendorChannels.vivo.appId}"`);
+		placeholders.push(`VIVO_APPKEY: ${gradleEnv("JPUSH_VIVO_APP_KEY")}`);
+		placeholders.push(`VIVO_APPID: ${gradleEnv("JPUSH_VIVO_APP_ID")}`);
 	}
 
 	if (vendorChannels?.honor) {
-		placeholders.push(`HONOR_APPID: "${vendorChannels.honor.appId}"`);
+		placeholders.push(`HONOR_APPID: ${gradleEnv("JPUSH_HONOR_APP_ID")}`);
 	}
 
 	if (vendorChannels?.nio) {
-		placeholders.push(`NIO_APPID: "${vendorChannels.nio.appId}"`);
+		placeholders.push(`NIO_APPID: ${gradleEnv("JPUSH_NIO_APP_ID")}`);
 	}
 
 	return `manifestPlaceholders = [

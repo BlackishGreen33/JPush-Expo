@@ -4,6 +4,7 @@
  */
 
 import { ConfigPlugin, withInfoPlist } from "expo/config-plugins";
+import { getAppKey, getApsForProduction, getChannel } from "../utils/config";
 
 /**
  * 配置 iOS Info.plist
@@ -13,6 +14,9 @@ export const withIosInfoPlist: ConfigPlugin = (config) =>
 	withInfoPlist(config, (config) => {
 		// 添加后台模式支持（推送通知必需）
 		config.modResults.UIBackgroundModes = ["fetch", "remote-notification"];
+		config.modResults.JPUSH_APPKEY = getAppKey();
+		config.modResults.JPUSH_CHANNEL = getChannel();
+		config.modResults.JPUSH_APS_FOR_PRODUCTION = getApsForProduction();
 
 		return config;
 	});

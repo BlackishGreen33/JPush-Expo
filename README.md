@@ -33,117 +33,123 @@ pnpm add jpush-react-native@3.1.9 jcore-react-native@^2.3.0
 ```
 
 ### 2.集成
-在`app.config.js`的`plugin`中注册插件
+推荐使用 `app.config.ts`，并把 Android 端的敏感值交给环境变量或 `gradle.properties`。这样 `expo prebuild` 生成的 `android/app/build.gradle` 不会再写入明文。
 
-#### 基础配置
-```js
-{
-  "expo": {
-    // ...
-    "plugins": [
-      [
-        // ...
-        "mx-jpush-expo",
-        {
-          "appKey": "你的极光推送AppKey",
-          "channel": "你的极光推送Channel",
-          "packageName": "com.your.app",
-          // iOS 推送环境配置（可选，默认为 false）
-          // false: 开发环境，用于开发和测试（默认）
-          // true: 生产环境，用于 App Store 发布的应用
-          "apsForProduction": false
-        }
-      ]
-    ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.your.app",
-      "infoPlist": {
-        // ...
+#### 推荐配置
+```ts
+import type { ConfigContext, ExpoConfig } from 'expo/config';
+import 'dotenv/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const isProduction = process.env.EXPO_PUBLIC_ENV === 'production';
+
+  return {
+    ...config,
+    plugins: (config.plugins || []).map(plugin => {
+      const [name, configurations] = plugin as [string, Record<string, any>];
+
+      if (name === 'mx-jpush-expo') {
+        return [
+          name,
+          {
+            ...configurations,
+            apsForProduction: isProduction,
+            appKey: process.env.JPUSH_APP_KEY ?? '',
+            channel: process.env.JPUSH_CHANNEL ?? configurations?.channel ?? '',
+            packageName:
+              process.env.JPUSH_PKGNAME ??
+              configurations?.packageName ??
+              config.android?.package ??
+              '',
+            vendorChannels: {
+              xiaomi: {
+                appId: process.env.JPUSH_XIAOMI_APP_ID,
+                appKey: process.env.JPUSH_XIAOMI_APP_KEY,
+              },
+              oppo: {
+                appKey: process.env.JPUSH_OPPO_APP_KEY,
+                appId: process.env.JPUSH_OPPO_APP_ID,
+                appSecret: process.env.JPUSH_OPPO_APP_SECRET,
+              },
+              vivo: {
+                appKey: process.env.JPUSH_VIVO_APP_KEY,
+                appId: process.env.JPUSH_VIVO_APP_ID,
+              },
+              meizu: {
+                appKey: process.env.JPUSH_MEIZU_APP_KEY,
+                appId: process.env.JPUSH_MEIZU_APP_ID,
+              },
+              honor: {
+                appId: process.env.JPUSH_HONOR_APP_ID,
+              },
+              nio: {
+                appId: process.env.JPUSH_NIO_APP_ID,
+              },
+              huawei: {
+                enabled: true,
+              },
+              fcm: {
+                enabled: true,
+              },
+            },
+          },
+        ];
       }
-    },
-    "android": {
-      "package": "com.your.app"
-    }
-  }
-}
+
+      return plugin;
+    }),
+  };
+};
 ```
 
-**配置参数说明**：
-- `appKey`（必填）：在极光推送控制台创建应用后获得的 AppKey
-- `channel`（必填）：渠道标识，用于统计不同渠道的推送效果，可自定义（如 "developer-default"、"App Store" 等）
-- `packageName`（必填）：Android 应用包名，需要与极光推送控制台注册的包名完全一致
-- `apsForProduction`（可选，默认 `false`）：iOS 推送环境配置
-  - `false`（默认）：开发环境，用于开发调试，需要使用开发证书
-  - `true`：生产环境，用于通过 App Store 或 TestFlight 分发的正式版本
+#### Android 端环境变量
+Android `manifestPlaceholders` 现在按下面的优先级取值：
 
-#### 厂商通道配置（可选）
-如果需要集成厂商通道（华为、FCM、小米、OPPO、VIVO、魅族、荣耀、蔚来），可以添加 `vendorChannels` 配置：
+1. `System.getenv("...")`
+2. `project.findProperty("...")`
+3. 插件收到的默认值（仅 `JPUSH_PKGNAME`）
+4. 空字符串（其余字段）
 
-```js
-{
-  "expo": {
-    "plugins": [
-      [
-        "mx-jpush-expo",
-        {
-          "appKey": "你的极光推送AppKey",
-          "channel": "你的极光推送Channel",
-          "packageName": "com.your.app",
-          "vendorChannels": {
-            // 华为推送（可选）
-            "huawei": {
-              "enabled": true
-            },
-            // FCM 推送（可选）
-            "fcm": {
-              "enabled": true
-            },
-            // 小米推送（可选）
-            "xiaomi": {
-              "appId": "小米的APPID",
-              "appKey": "小米的APPKEY"
-            },
-            // OPPO 推送（可选）
-            "oppo": {
-              "appKey": "OP-oppo的APPKEY",
-              "appId": "OP-oppo的APPID",
-              "appSecret": "OP-oppo的APPSECRET"
-            },
-            // VIVO 推送（可选）
-            "vivo": {
-              "appKey": "vivo的APPKEY",
-              "appId": "vivo的APPID"
-            },
-            // 魅族推送（可选）
-            "meizu": {
-              "appKey": "MZ-魅族的APPKEY",
-              "appId": "MZ-魅族的APPID"
-            },
-            // 荣耀推送（可选）
-            "honor": {
-              "appId": "Honor的APP ID"
-            },
-            // 蔚来推送（可选）
-            "nio": {
-              "appId": "蔚来的APP ID"
-            }
-          }
-        }
-      ]
-    ]
-  }
-}
+可用环境变量名：
+
+- `JPUSH_APP_KEY`
+- `JPUSH_CHANNEL`
+- `JPUSH_PKGNAME`
+- `JPUSH_XIAOMI_APP_ID`
+- `JPUSH_XIAOMI_APP_KEY`
+- `JPUSH_OPPO_APP_ID`
+- `JPUSH_OPPO_APP_KEY`
+- `JPUSH_OPPO_APP_SECRET`
+- `JPUSH_VIVO_APP_ID`
+- `JPUSH_VIVO_APP_KEY`
+- `JPUSH_MEIZU_APP_ID`
+- `JPUSH_MEIZU_APP_KEY`
+- `JPUSH_HONOR_APP_ID`
+- `JPUSH_NIO_APP_ID`
+
+示例 `.env`：
+
+```bash
+JPUSH_APP_KEY=your-jpush-app-key
+JPUSH_CHANNEL=developer-default
+JPUSH_PKGNAME=com.your.app
+JPUSH_XIAOMI_APP_ID=your-xiaomi-app-id
+JPUSH_XIAOMI_APP_KEY=your-xiaomi-app-key
 ```
 
-**注意**：
-- 厂商通道配置是可选的，只需配置你实际使用的厂商
-- 如果不配置某个厂商，对应的 SDK 依赖和配置不会被添加
-- 所有厂商通道的 AppKey/AppId 需要在对应厂商的推送平台申请
-- 厂商通道插件版本：**5.9.0**（与 JPush SDK 版本保持一致）
-- **SDK 依赖已自动配置**，无需手动下载 aar 文件
+也可以把这些值写到 `android/gradle.properties`，构建时会通过 `project.findProperty(...)` 读取。
 
-**厂商通道额外配置**：
+#### 配置说明
+- `appKey`、`channel`、`packageName` 仍然是插件必填项，因为 iOS 注入代码和参数校验发生在 Expo 配置阶段。
+- iOS 现在改为从 `Info.plist` 读取 `JPUSH_APPKEY`、`JPUSH_CHANNEL` 和 `JPUSH_APS_FOR_PRODUCTION`，不再把这些值直接拼进 `AppDelegate.swift`。
+- 这能避免源码层的明文注入，但不能把它们变成客户端不可见的“秘密”，因为 JPush 初始化参数最终仍会出现在打包产物里。
+- Android 侧生成的 `manifestPlaceholders` 不再把这些值写死到 `build.gradle` 中。
+- `JPUSH_PKGNAME` 现在按 `System.getenv("JPUSH_PKGNAME") -> project.findProperty("JPUSH_PKGNAME") -> 插件收到的 packageName` 回退，不再依赖 `applicationId` 的声明顺序。
+- `vendorChannels` 的作用是决定要注入哪些厂商 SDK 和哪些占位符；真正的厂商密钥建议通过环境变量或 `gradle.properties` 提供。
+- 厂商通道配置是可选的，只需配置你实际使用的厂商。
+- 厂商通道插件版本：**5.9.0**。
+
+#### 厂商通道额外配置
 
 | 厂商 | 配置文件 | 应用签名 | 说明 |
 |------|---------|---------|------|
@@ -155,41 +161,51 @@ pnpm add jpush-react-native@3.1.9 jcore-react-native@^2.3.0
 | **OPPO** | - | ❌ | 仅需 AppKey、AppId 和 AppSecret |
 | **VIVO** | - | ❌ | 仅需 AppKey 和 AppId |
 | **魅族** | - | ❌ | 仅需 AppKey 和 AppId |
-#### 厂商通道详细配置
 
-各厂商通道的详细配置步骤（包括参数获取、签名配置等），请参考极光官方文档：
+各厂商通道的详细配置步骤请参考极光官方文档：
 
 📖 **[极光推送 - Android 厂商通道参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param)**
-
-**快速说明**：
-
-| 厂商 | 配置文件 | 签名要求 | 说明 |
-|------|---------|---------|------|
-| **华为** | `agconnect-services.json` | ✅ 必需 | [华为参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#%E5%8D%8E%E4%B8%BA%E5%8F%82%E6%95%B0%E8%8E%B7%E5%8F%96) |
-| **FCM** | `google-services.json` | ❌ | [FCM 参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#%E5%88%9B%E5%BB%BA%E5%BA%94%E7%94%A8-4) |
-| **荣耀** | - | ✅ 必需 | [荣耀参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#%E8%8D%A3%E8%80%80%E5%8F%82%E6%95%B0%E8%8E%B7%E5%8F%96) |
-| **蔚来** | - | ✅ 必需 |  |
-| **小米** | - | ❌ | [小米参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#%E5%B0%8F%E7%B1%B3%E5%8F%82%E6%95%B0%E8%8E%B7%E5%8F%96) |
-| **OPPO** | - | ❌ | [OPPO 参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#oppo-%E5%8F%82%E6%95%B0%E8%8E%B7%E5%8F%96) |
-| **VIVO** | - | ❌ | [VIVO 参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#vivo-%E5%8F%82%E6%95%B0%E8%8E%B7%E5%8F%96) |
-| **魅族** | - | ❌ | [魅族参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param#%E9%AD%85%E6%97%8F%E5%8F%82%E6%95%B0%E8%8E%B7%E5%8F%96) |
 
 **配置文件位置**：
 - 将 `agconnect-services.json`（华为）或 `google-services.json`（FCM）放到 `android/app/` 目录
 
 ## 3.`prebuild`
 ```bash
-expo prebuild
+npx expo prebuild -p android
 ```
-这将生成`android`与`ios`文件夹
+
+如果同时需要刷新 iOS 工程，可以使用：
+
+```bash
+npx expo prebuild
+```
 
 ## 4.检验
-- `ios`可以参考：
-  - [JPush 集成 Expo](https://juejin.cn/post/7423235127716659239)
-  - [Expo SDK 53+ iOS Swift 版本](https://juejin.cn/post/7554288083597885467)
-- `android`在`android studio`运行`prebuild`完的文件即可
+重新生成后，检查 `android/app/build.gradle` 中的 `manifestPlaceholders`，应当是下面这种形式，而不是明文：
+
+```gradle
+manifestPlaceholders = [
+    JPUSH_PKGNAME: System.getenv("JPUSH_PKGNAME") ?: (project.findProperty("JPUSH_PKGNAME") ?: "com.your.app"),
+    JPUSH_APPKEY: System.getenv("JPUSH_APP_KEY") ?: (project.findProperty("JPUSH_APP_KEY") ?: ""),
+    JPUSH_CHANNEL: System.getenv("JPUSH_CHANNEL") ?: (project.findProperty("JPUSH_CHANNEL") ?: "")
+]
+```
+
+如果你是在业务项目里临时直接改 `node_modules/mx-jpush-expo`，重装依赖后修改会丢失，正式建议使用 `pnpm patch mx-jpush-expo` 固化。
 
 ## 更新日志
+
+### v1.2.2 (2026-03-08)
+
+- 修复 `JPUSH_PKGNAME` 依赖 `applicationId` 声明顺序的问题
+- `JPUSH_PKGNAME` 改为按 `环境变量 -> gradle.properties -> 插件 packageName` 回退
+
+### v1.2.1 (2026-03-08)
+
+- Android `manifestPlaceholders` 改为在 Gradle 构建时读取环境变量或 `gradle.properties`
+- 不再把 `JPUSH_APPKEY`、`JPUSH_CHANNEL` 和厂商密钥明文写入 `android/app/build.gradle`
+- iOS 改为从 `Info.plist` 读取 JPush 初始化参数，不再把这些值直接注入 `AppDelegate.swift`
+- README 更新为 `app.config.ts + 环境变量` 的推荐用法
 
 ### v1.1.0 (2025-12-17)
 

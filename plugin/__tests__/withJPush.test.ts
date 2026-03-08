@@ -4,6 +4,7 @@
 
 import { ExpoConfig } from 'expo/config';
 import withJPush from '../src';
+import { validateProps } from '../src/types';
 
 describe('withJPush', () => {
   const mockConfig: ExpoConfig = {
@@ -14,13 +15,19 @@ describe('withJPush', () => {
 
   it('should throw error when appKey is missing', () => {
     expect(() => {
-      withJPush(mockConfig, { channel: 'test' } as any);
+      validateProps({
+        channel: 'test',
+        packageName: 'com.example.test',
+      } as any);
     }).toThrow('[MX_JPush_Expo] appKey 是必填项');
   });
 
   it('should throw error when channel is missing', () => {
     expect(() => {
-      withJPush(mockConfig, { appKey: 'test' } as any);
+      validateProps({
+        appKey: 'test',
+        packageName: 'com.example.test',
+      } as any);
     }).toThrow('[MX_JPush_Expo] channel 是必填项');
   });
 
@@ -28,6 +35,7 @@ describe('withJPush', () => {
     const result = withJPush(mockConfig, {
       appKey: 'test-app-key',
       channel: 'test-channel',
+      packageName: 'com.example.test',
     });
 
     expect(result).toBeDefined();
@@ -38,6 +46,7 @@ describe('withJPush', () => {
     const result = withJPush(mockConfig, {
       appKey: 'test-app-key',
       channel: 'test-channel',
+      packageName: 'com.example.test',
       apsForProduction: false,
     });
 
@@ -46,9 +55,10 @@ describe('withJPush', () => {
 
   it('should throw error for invalid apsForProduction type', () => {
     expect(() => {
-      withJPush(mockConfig, {
+      validateProps({
         appKey: 'test-app-key',
         channel: 'test-channel',
+        packageName: 'com.example.test',
         apsForProduction: 'invalid' as any,
       });
     }).toThrow('[MX_JPush_Expo] apsForProduction 必须是布尔值');
