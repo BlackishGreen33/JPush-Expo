@@ -14,6 +14,7 @@ expo接入JPUSH脚本
 
 ## 版本要求
 - Expo SDK: 53+
+- 仓库开发基线: Expo SDK 53
 - React Native: 0.79.5+
 - jpush-react-native: 3.1.9
 - jcore-react-native: 2.3.0
