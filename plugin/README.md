@@ -14,18 +14,22 @@ plugin/
 │   ├── ios/                  # iOS 平台配置
 │   │   ├── index.ts          # iOS 配置集成入口
 │   │   ├── infoPlist.ts      # Info.plist 配置
-│   │   ├── appDelegateInterface.ts # AppDelegate 接口配置
 │   │   ├── appDelegate.ts    # AppDelegate 实现配置
 │   │   ├── bridgingHeader.ts # Swift/OC 桥接头文件配置
-│   │   └── podfile.ts        # Podfile 配置
 │   └── android/              # Android 平台配置
 │       ├── index.ts          # Android 配置集成入口
 │       ├── androidManifest.ts # AndroidManifest.xml 配置
 │       ├── appBuildGradle.ts # app/build.gradle 配置
-│       └── settingsGradle.ts # settings.gradle 配置
+│       ├── projectBuildGradle.ts # project/build.gradle 配置
+│       ├── settingsGradle.ts # settings.gradle 配置
+│       └── gradleProperties.ts # gradle.properties 配置
 ├── build/                    # 编译后的 JavaScript 文件（npm 发布）
 ├── __tests__/                # 单元测试
-│   └── withJPush.test.ts    # 主插件测试
+│   ├── fixtures/             # 原生工程测试夹具
+│   ├── iosFixture.ts         # iOS fixture 测试工具
+│   ├── nativeIosSmoke.test.ts # iOS smoke 测试
+│   ├── nativeIosMods.test.ts # iOS 原生输出回归测试
+│   └── withJPush.test.ts     # 参数校验测试
 ├── tsconfig.json             # TypeScript 配置
 └── jest.config.js            # Jest 测试配置
 ```
@@ -47,17 +51,23 @@ plugin/
 
 ### iOS 模块 (src/ios/)
 - **index.ts**: iOS 配置的集成入口
-- **infoPlist.ts**: 配置 Info.plist，添加后台模式和权限说明
-- **appDelegateInterface.ts**: 添加 JPUSHRegisterDelegate 协议
+- **infoPlist.ts**: 配置 Info.plist，写入 JPush 初始化参数并合并后台模式
 - **appDelegate.ts**: 注入 JPush 初始化和事件处理代码
-- **bridgingHeader.ts**: 配置 Swift/OC 混编的桥接头文件
-- **podfile.ts**: 配置 Podfile post_install 脚本
+- **bridgingHeader.ts**: 复用或创建 Swift/OC 混编的桥接头文件，并保证 import 幂等
 
 ### Android 模块 (src/android/)
 - **index.ts**: Android 配置的集成入口
 - **androidManifest.ts**: 配置 AndroidManifest.xml meta-data
-- **appBuildGradle.ts**: 配置 build.gradle 依赖和 manifestPlaceholders
-- **settingsGradle.ts**: 配置 settings.gradle 模块引用
+- **appBuildGradle.ts**: 配置 `app/build.gradle` 依赖和 `manifestPlaceholders`
+- **projectBuildGradle.ts**: 配置 project 级 Gradle 仓库和 classpath
+- **settingsGradle.ts**: 配置 `settings.gradle` 模块引用
+- **gradleProperties.ts**: 配置 Gradle 兼容性属性
+
+### 测试模块 (__tests__/)
+- **withJPush.test.ts**: 参数校验和插件入口的基础测试
+- **iosFixture.ts**: 基于 `compileModsAsync` 的 iOS 原生工程测试工具
+- **nativeIosSmoke.test.ts**: 主入口 smoke 测试
+- **nativeIosMods.test.ts**: Info.plist 和 Bridging Header 的回归测试
 
 ## 设计原则
 
@@ -96,6 +106,11 @@ npm run build
 # 从项目根目录运行
 npm test
 ```
+
+当前测试分为两类：
+
+- 纯参数校验测试
+- 基于真实 Expo iOS fixture 的原生输出回归测试
 
 ## 开发
 
