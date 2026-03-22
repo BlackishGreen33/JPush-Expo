@@ -6,33 +6,33 @@
 
 ```text
 plugin/
-├── src/
-│   ├── index.ts
-│   ├── types.ts
+├── src/                         # TypeScript 源码
+│   ├── index.ts                # 主入口文件
+│   ├── types.ts                # 类型定义和参数验证
 │   ├── utils/
-│   │   ├── config.ts
-│   │   ├── codeValidator.ts
-│   │   └── generateCode.ts
-│   ├── ios/
-│   │   ├── index.ts
-│   │   ├── infoPlist.ts
-│   │   ├── appDelegate.ts
-│   │   └── bridgingHeader.ts
-│   ├── android/
-│   │   ├── index.ts
-│   │   ├── androidManifest.ts
-│   │   ├── appBuildGradle.ts
-│   │   ├── projectBuildGradle.ts
-│   │   ├── settingsGradle.ts
-│   │   └── gradleProperties.ts
-├── __tests__/
+│   │   ├── config.ts           # 全局配置管理
+│   │   ├── codeValidator.ts    # 注入结果校验
+│   │   └── generateCode.ts     # 原生代码注入工具
+│   ├── ios/                    # iOS 平台配置
+│   │   ├── index.ts            # iOS 配置集成入口
+│   │   ├── infoPlist.ts        # Info.plist 配置
+│   │   ├── appDelegate.ts      # AppDelegate 实现配置
+│   │   └── bridgingHeader.ts   # Swift/OC 桥接头文件配置
+│   └── android/                # Android 平台配置
+│       ├── index.ts            # Android 配置集成入口
+│       ├── androidManifest.ts  # AndroidManifest.xml 配置
+│       ├── appBuildGradle.ts   # app/build.gradle 配置
+│       ├── projectBuildGradle.ts # project/build.gradle 配置
+│       ├── settingsGradle.ts   # settings.gradle 配置
+│       └── gradleProperties.ts # gradle.properties 配置
+├── __tests__/                  # 测试目录
 │   ├── fixtures/
-│   │   └── ios-project/
-│   ├── iosFixture.ts
-│   └── *.test.ts
-├── build/
-├── tsconfig.json
-└── jest.config.js
+│   │   └── ios-project/        # iOS 原生 fixture
+│   ├── iosFixture.ts           # iOS fixture helper
+│   └── *.test.ts               # Jest 用例
+├── build/                      # 编译后的 JavaScript 文件（npm 发布）
+├── tsconfig.json               # TypeScript 配置
+└── jest.config.js              # Jest 测试配置
 ```
 
 ## 模块职责

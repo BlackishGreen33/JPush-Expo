@@ -29,6 +29,7 @@
 - [快速开始](#快速开始)
 - [推荐配置](#推荐配置)
 - [环境变量与厂商通道](#环境变量与厂商通道)
+- [配置说明](#配置说明)
 - [插件会修改哪些原生文件](#插件会修改哪些原生文件)
 - [如何验证生成结果](#如何验证生成结果)
 - [常见问题](#常见问题)
@@ -191,20 +192,37 @@ JPUSH_XIAOMI_APP_ID=your-xiaomi-app-id
 JPUSH_XIAOMI_APP_KEY=your-xiaomi-app-key
 ```
 
+也可以把这些值写到 `android/gradle.properties`，构建时会通过 `project.findProperty(...)` 读取。
+
+## 配置说明
+
+- `appKey`、`channel`、`packageName` 仍然是插件必填项，因为 iOS 注入代码和参数校验发生在 Expo 配置阶段。
+- iOS 现在改为从 `Info.plist` 读取 `JPUSH_APPKEY`、`JPUSH_CHANNEL` 和 `JPUSH_APS_FOR_PRODUCTION`，不再把这些值直接拼接进 `AppDelegate.swift`。
+- 这能避免源码层的明文注入，但不能把它们变成客户端不可见的“秘密”，因为 JPush 初始化参数最终仍会出现在打包产物里。
+- Android 侧生成的 `manifestPlaceholders` 不再把这些值写死到 `build.gradle` 中。
+- `JPUSH_PKGNAME` 现在按 `System.getenv("JPUSH_PKGNAME") -> project.findProperty("JPUSH_PKGNAME") -> 插件收到的 packageName` 回退，不再依赖 `applicationId` 的声明顺序。
+- `vendorChannels` 的作用是决定要注入哪些厂商 SDK 和哪些占位符；真正的厂商密钥建议通过环境变量或 `gradle.properties` 提供。
+- 厂商通道配置是可选的，只需配置你实际使用的厂商。
+- 厂商通道插件版本：**5.9.0**。
+
 ### 厂商通道额外要求
 
 | 厂商 | 额外文件 | 签名要求 | 说明 |
 | --- | --- | --- | --- |
-| 华为 | `agconnect-services.json` | 需要 | 需配置 SHA256 指纹 |
-| FCM | `google-services.json` | 不需要 | 需在 Firebase 控制台申请 |
-| 荣耀 | 无 | 需要 | 需配置 SHA256 指纹 |
-| 蔚来 | 无 | 需要 | 需配置应用签名 |
-| 小米 | 无 | 不需要 | 仅需 AppId / AppKey |
-| OPPO | 无 | 不需要 | 仅需 AppId / AppKey / AppSecret |
-| VIVO | 无 | 不需要 | 仅需 AppId / AppKey |
-| 魅族 | 无 | 不需要 | 仅需 AppId / AppKey |
+| **华为** | `agconnect-services.json` | ✅ **必需** | 需在华为开发者联盟申请，配置 SHA256 指纹 |
+| **FCM** | `google-services.json` | ❌ | 需在 Firebase 控制台申请 |
+| **荣耀** | 无 | ✅ **必需** | 需在荣耀开发者平台配置 SHA256 指纹 |
+| **蔚来** | 无 | ✅ **必需** | 需在蔚来开发者平台配置应用签名 |
+| **小米** | 无 | ❌ | 仅需 AppId 和 AppKey |
+| **OPPO** | 无 | ❌ | 仅需 AppKey、AppId 和 AppSecret |
+| **VIVO** | 无 | ❌ | 仅需 AppKey 和 AppId |
+| **魅族** | 无 | ❌ | 仅需 AppKey 和 AppId |
 
 官方参数说明见：[极光推送 Android 厂商通道参数获取](https://docs.jiguang.cn/jpush/client/Android/android_3rd_param)
+
+**配置文件位置**：
+
+- 将 `agconnect-services.json`（华为）或 `google-services.json`（FCM）放到 `android/app/` 目录
 
 ### Android 签名配置示例
 
@@ -340,31 +358,38 @@ npm run lint
 
 ```text
 mx-jpush-expo/
-├── app.plugin.js
-├── plugin/
-│   ├── src/
-│   │   ├── index.ts
-│   │   ├── types.ts
-│   │   ├── ios/
-│   │   │   ├── infoPlist.ts
-│   │   │   ├── appDelegate.ts
-│   │   │   └── bridgingHeader.ts
-│   │   ├── android/
-│   │   │   ├── androidManifest.ts
-│   │   │   ├── appBuildGradle.ts
-│   │   │   ├── projectBuildGradle.ts
-│   │   │   ├── settingsGradle.ts
-│   │   │   └── gradleProperties.ts
-│   │   └── utils/
-│   │       └── config.ts
-│   ├── __tests__/
-│   │   ├── fixtures/
+├── app.plugin.js                 # 主入口文件
+├── plugin/                       # 插件源码和构建
+│   ├── src/                      # TypeScript 源码
+│   │   ├── index.ts              # 插件主入口
+│   │   ├── types.ts              # 类型定义和参数校验
+│   │   ├── utils/                # 工具模块
+│   │   │   ├── config.ts         # 全局配置管理
+│   │   │   ├── codeValidator.ts  # 注入结果校验
+│   │   │   └── generateCode.ts   # 原生代码注入工具
+│   │   ├── ios/                  # iOS 平台配置
+│   │   │   ├── index.ts          # iOS 配置集成入口
+│   │   │   ├── infoPlist.ts      # Info.plist 配置
+│   │   │   ├── appDelegate.ts    # AppDelegate 实现配置
+│   │   │   └── bridgingHeader.ts # Swift/OC 桥接头文件配置
+│   │   └── android/              # Android 平台配置
+│   │       ├── index.ts          # Android 配置集成入口
+│   │       ├── androidManifest.ts # AndroidManifest.xml 配置
+│   │       ├── appBuildGradle.ts # app/build.gradle 配置
+│   │       ├── projectBuildGradle.ts # project/build.gradle 配置
+│   │       ├── settingsGradle.ts # settings.gradle 配置
+│   │       └── gradleProperties.ts # gradle.properties 配置
+│   ├── build/                    # 编译后的 JavaScript 文件（npm 发布）
+│   ├── __tests__/                # 测试目录
+│   │   ├── fixtures/             # 原生工程 fixture
 │   │   │   └── ios-project/
-│   │   ├── iosFixture.ts
-│   │   └── *.test.ts
-│   └── build/
-├── .github/workflows/ci.yml
-└── README.md
+│   │   ├── iosFixture.ts         # iOS fixture helper
+│   │   └── *.test.ts             # Jest 用例
+│   ├── tsconfig.json             # TypeScript 配置
+│   └── jest.config.js            # Jest 测试配置
+├── .github/workflows/ci.yml      # CI 质量检查
+├── CHANGELOG.md                  # 历史更新日志
+└── README.md                     # 项目说明
 ```
 
 插件内部说明见 [plugin/README.md](./plugin/README.md)。
@@ -376,10 +401,15 @@ mx-jpush-expo/
 - 补齐 iOS fixture-based 原生回归测试
 - 加入 ESLint 与 CI 质量闭环
 - 对齐 Expo SDK 53 的版本声明与仓库开发基线
+- 历史版本更新已整理到 [CHANGELOG.md](./CHANGELOG.md)
 
 ## 致谢与许可
 
-感谢以下资料与实现思路的启发：
+感谢以下掘金文章作者的技术分享：
+
+- [@折七](https://juejin.cn/user/7423235127716659239) - JPush 集成 Expo 基础方案
+
+同时也感谢以下资料与实现思路的启发：
 
 - [JPush 集成 Expo](https://juejin.cn/post/7423235127716659239)
 - [Expo SDK 53+ 集成极光推送 iOS Swift](https://juejin.cn/post/7554288083597885467)
