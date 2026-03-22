@@ -3,20 +3,25 @@
  * 参考: https://juejin.cn/post/7554288083597885467
  */
 
-import { ConfigPlugin } from 'expo/config-plugins';
+import { ExpoConfig } from 'expo/config';
 import { withIosInfoPlist } from './infoPlist';
 import { withIosAppDelegate } from './appDelegate';
 import { withIosBridgingHeader } from './bridgingHeader';
+import { ResolvedJPushPluginProps } from '../types';
 
 /**
  * 应用所有 iOS 配置
  * @param config - Expo config
+ * @param props - 已归一化的插件配置
  * @returns Modified config
  */
-export const withIOSConfig: ConfigPlugin = (config) => {
-  config = withIosInfoPlist(config);
+export function withIOSConfig(
+  config: ExpoConfig,
+  props: ResolvedJPushPluginProps
+): ExpoConfig {
+  config = withIosInfoPlist(config, props);
   config = withIosAppDelegate(config);
   config = withIosBridgingHeader(config);
 
   return config;
-};
+}
