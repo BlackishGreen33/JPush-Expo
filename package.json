@@ -48,6 +48,9 @@
     "name": "MuxiStudio",
     "url": "https://github.com/konodioda727"
   },
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "license": "MIT",
   "peerDependencies": {
     "expo": ">=53.0.0"
