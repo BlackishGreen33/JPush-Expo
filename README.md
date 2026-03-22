@@ -352,11 +352,6 @@ mx-jpush-expo/
 │   │       └── gradleProperties.ts # gradle.properties 配置
 │   ├── build/                # 编译后的 JS 文件（发布到 npm）
 │   ├── __tests__/            # 单元测试
-│   │   ├── fixtures/         # 原生工程测试夹具
-│   │   ├── iosFixture.ts     # iOS fixture 测试工具
-│   │   ├── nativeIosSmoke.test.ts # iOS smoke 测试
-│   │   ├── nativeIosMods.test.ts # iOS 原生输出回归测试
-│   │   └── withJPush.test.ts # 参数校验测试
 │   ├── tsconfig.json         # TypeScript 配置
 │   └── jest.config.js        # Jest 测试配置
 ├── package.json

@@ -25,10 +25,6 @@ plugin/
 │       └── gradleProperties.ts # gradle.properties 配置
 ├── build/                    # 编译后的 JavaScript 文件（npm 发布）
 ├── __tests__/                # 单元测试
-│   ├── fixtures/             # 原生工程测试夹具
-│   ├── iosFixture.ts         # iOS fixture 测试工具
-│   ├── nativeIosSmoke.test.ts # iOS smoke 测试
-│   ├── nativeIosMods.test.ts # iOS 原生输出回归测试
 │   └── withJPush.test.ts     # 参数校验测试
 ├── tsconfig.json             # TypeScript 配置
 └── jest.config.js            # Jest 测试配置
@@ -65,9 +61,6 @@ plugin/
 
 ### 测试模块 (__tests__/)
 - **withJPush.test.ts**: 参数校验和插件入口的基础测试
-- **iosFixture.ts**: 基于 `compileModsAsync` 的 iOS 原生工程测试工具
-- **nativeIosSmoke.test.ts**: 主入口 smoke 测试
-- **nativeIosMods.test.ts**: Info.plist 和 Bridging Header 的回归测试
 
 ## 设计原则
 
@@ -107,10 +100,7 @@ npm run build
 npm test
 ```
 
-当前测试分为两类：
-
-- 纯参数校验测试
-- 基于真实 Expo iOS fixture 的原生输出回归测试
+当前主线包含基础的参数校验测试。
 
 ## 开发
 
