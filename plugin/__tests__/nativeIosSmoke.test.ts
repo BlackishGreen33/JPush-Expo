@@ -24,8 +24,8 @@ describe('native iOS fixture harness', () => {
 
     expect(appDelegate).toContain('import UserNotifications');
     expect(appDelegate).toContain('JPUSHService.setup');
-    expect(infoPlist.JPUSH_APPKEY).toBe('test-app-key');
-    expect(infoPlist.JPUSH_CHANNEL).toBe('test-channel');
+    expect(infoPlist.JPUSH_APPKEY).toBe('tp-key');
+    expect(infoPlist.JPUSH_CHANNEL).toBe('tp-chan');
     expect(infoPlist.UIBackgroundModes).toEqual(
       expect.arrayContaining(['fetch', 'remote-notification'])
     );
