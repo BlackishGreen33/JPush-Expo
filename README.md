@@ -193,6 +193,12 @@ manifestPlaceholders = [
 ]
 ```
 
+同时建议检查 iOS 生成结果：
+
+- `ios/<app>/Info.plist` 中的 `UIBackgroundModes` 会保留宿主已有值，并自动补齐 `fetch` 和 `remote-notification`
+- 如果项目使用 Swift，插件会优先复用已有 `SWIFT_OBJC_BRIDGING_HEADER`；如果未配置，则自动创建 `<target>-Bridging-Header.h`
+- 重复执行 `expo prebuild` 不会重复追加 JPush 所需的 Bridging Header import
+
 如果你是在业务项目里临时直接改 `node_modules/mx-jpush-expo`，重装依赖后修改会丢失，正式建议使用 `pnpm patch mx-jpush-expo` 固化。
 
 ## 更新日志
@@ -220,7 +226,7 @@ manifestPlaceholders = [
 - ✨ 自动配置华为和 FCM 的 `apply plugin` 语句
 - ✨ 自动配置 project/build.gradle（Maven 仓库和 classpath）
 - ✨ 新增 `packageName` 必填配置项
-- � 完善厂商文通道配置文档，添加极光官方文档链接
+- 📝 完善厂商通道配置文档，添加极光官方文档链接
 - 📝 添加应用签名配置说明（华为、荣耀、蔚来必需）
 - 🔧 优化代码结构，移除手动下载 aar 的要求
 
@@ -246,7 +252,8 @@ manifestPlaceholders = [
 1. 确保在 Xcode 中开启 Push Notifications 能力
 2. 在极光推送控制台上传正确的推送证书（Development/Production）
 3. 验证 Bundle ID 与极光控制台完全匹配
-4. 如果使用 Swift，插件会自动配置 Bridging Header
+4. 如果使用 Swift，插件会自动复用或创建 Bridging Header，并写入 JPush 所需 import
+5. 插件会合并 `UIBackgroundModes`，不会覆盖宿主已有后台模式
 
 ### Android 配置
 1. 确保在 AndroidManifest.xml 中已声明必要的权限
@@ -336,15 +343,15 @@ mx-jpush-expo/
 │   │   ├── ios/              # iOS 平台配置
 │   │   │   ├── index.ts      # iOS 配置集成
 │   │   │   ├── infoPlist.ts  # Info.plist 配置
-│   │   │   ├── appDelegateInterface.ts  # AppDelegate 接口
-│   │   │   ├── appDelegate.ts    # AppDelegate 实现
+│   │   │   ├── appDelegate.ts # AppDelegate 实现
 │   │   │   ├── bridgingHeader.ts # Swift/OC 桥接头文件
-│   │   │   └── podfile.ts    # Podfile 配置
 │   │   └── android/          # Android 平台配置
 │   │       ├── index.ts      # Android 配置集成
 │   │       ├── androidManifest.ts # AndroidManifest 配置
-│   │       ├── appBuildGradle.ts # build.gradle 配置
-│   │       └── settingsGradle.ts # settings.gradle 配置
+│   │       ├── appBuildGradle.ts # app/build.gradle 配置
+│   │       ├── projectBuildGradle.ts # project/build.gradle 配置
+│   │       ├── settingsGradle.ts # settings.gradle 配置
+│   │       └── gradleProperties.ts # gradle.properties 配置
 │   ├── build/                # 编译后的 JS 文件（发布到 npm）
 │   ├── __tests__/            # 单元测试
 │   ├── tsconfig.json         # TypeScript 配置
