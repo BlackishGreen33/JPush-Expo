@@ -21,7 +21,7 @@ export function withAndroidGradleProperties(
   props: Pick<ResolvedJPushPluginProps, 'vendorChannels'>
 ): ExpoConfig {
   return withGradleProperties(config, (nextConfig) => {
-    if (props.vendorChannels?.huawei) {
+    if (props.vendorChannels?.huawei?.enabled === true) {
       console.log(
         '\n[MX_JPush_Expo] 配置 gradle.properties 华为 AGC 兼容性（Gradle 8.0）...'
       );

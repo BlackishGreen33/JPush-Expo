@@ -75,6 +75,8 @@ const getManifestPlaceholders = (
 const getJPushDependencies = (
   vendorChannels?: VendorChannelConfig
 ): string => {
+  const isHuaweiEnabled = vendorChannels?.huawei?.enabled === true;
+  const isFcmEnabled = vendorChannels?.fcm?.enabled === true;
   const dependencies: string[] = [
     `// JPush React Native 桥接（已包含 JPush 核心 SDK）`,
     `implementation project(':jpush-react-native')`,
@@ -82,12 +84,22 @@ const getJPushDependencies = (
   ];
 
   if (vendorChannels) {
-    const hasVendorChannels = Object.keys(vendorChannels).length > 0;
+    const hasVendorChannels =
+      isHuaweiEnabled ||
+      isFcmEnabled ||
+      Boolean(
+        vendorChannels.meizu ||
+          vendorChannels.vivo ||
+          vendorChannels.xiaomi ||
+          vendorChannels.oppo ||
+          vendorChannels.honor ||
+          vendorChannels.nio
+      );
     if (hasVendorChannels) {
       dependencies.push(``, `// 厂商通道 SDK（JPush 5.9.0）`);
     }
 
-    if (vendorChannels.huawei) {
+    if (isHuaweiEnabled) {
       dependencies.push(
         `// 华为厂商`,
         `implementation 'com.huawei.hms:push:6.13.0.300'`,
@@ -96,7 +108,7 @@ const getJPushDependencies = (
       );
     }
 
-    if (vendorChannels.fcm) {
+    if (isFcmEnabled) {
       dependencies.push(
         `// FCM 厂商`,
         `implementation 'com.google.firebase:firebase-messaging:24.1.0'`,
@@ -157,13 +169,15 @@ const getJPushDependencies = (
  * 生成 apply plugin 语句
  */
 const getApplyPlugins = (vendorChannels?: VendorChannelConfig): string => {
+  const isHuaweiEnabled = vendorChannels?.huawei?.enabled === true;
+  const isFcmEnabled = vendorChannels?.fcm?.enabled === true;
   const plugins: string[] = [];
 
-  if (vendorChannels?.fcm) {
+  if (isFcmEnabled) {
     plugins.push(`apply plugin: 'com.google.gms.google-services'`);
   }
 
-  if (vendorChannels?.huawei) {
+  if (isHuaweiEnabled) {
     plugins.push(`apply plugin: 'com.huawei.agconnect'`);
   }
 

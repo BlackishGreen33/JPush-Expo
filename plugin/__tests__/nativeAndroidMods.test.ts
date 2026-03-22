@@ -252,4 +252,48 @@ describe('native Android config mods', () => {
     );
     expect(gradlePropertiesB).toContain('apmsInstrumentationEnabled=false');
   });
+
+  it('does not inject Huawei or FCM integrations when their enabled flags are false', async () => {
+    const projectRoot = createProjectRoot();
+
+    await compileAndroidMods(projectRoot, {
+      vendorChannels: {
+        huawei: { enabled: false },
+        fcm: { enabled: false },
+      },
+    });
+
+    const appBuildGradle = readFixtureFile(projectRoot, APP_BUILD_GRADLE_PATH);
+    const projectBuildGradle = readFixtureFile(
+      projectRoot,
+      PROJECT_BUILD_GRADLE_PATH
+    );
+    const gradleProperties = readFixtureFile(
+      projectRoot,
+      GRADLE_PROPERTIES_PATH
+    );
+
+    expect(appBuildGradle).not.toContain(
+      "implementation 'com.huawei.hms:push:6.13.0.300'"
+    );
+    expect(appBuildGradle).not.toContain(
+      "implementation 'com.google.firebase:firebase-messaging:24.1.0'"
+    );
+    expect(appBuildGradle).not.toContain(
+      "apply plugin: 'com.google.gms.google-services'"
+    );
+    expect(appBuildGradle).not.toContain(
+      "apply plugin: 'com.huawei.agconnect'"
+    );
+    expect(projectBuildGradle).not.toContain(
+      "classpath 'com.google.gms:google-services:4.4.0'"
+    );
+    expect(projectBuildGradle).not.toContain(
+      "classpath 'com.huawei.agconnect:agcp:1.9.3.302'"
+    );
+    expect(projectBuildGradle).not.toContain(
+      "maven { url 'https://developer.huawei.com/repo/' }"
+    );
+    expect(gradleProperties).not.toContain('apmsInstrumentationEnabled=false');
+  });
 });

@@ -13,14 +13,16 @@ import { Validator } from '../utils/codeValidator';
  * 生成厂商通道 classpath 依赖
  */
 const getVendorClasspaths = (vendorChannels?: VendorChannelConfig): string => {
+  const isHuaweiEnabled = vendorChannels?.huawei?.enabled === true;
+  const isFcmEnabled = vendorChannels?.fcm?.enabled === true;
   const classpaths: string[] = [];
 
-  if (vendorChannels?.fcm) {
+  if (isFcmEnabled) {
     classpaths.push(`// Google Services for FCM`);
     classpaths.push(`classpath 'com.google.gms:google-services:4.4.0'`);
   }
 
-  if (vendorChannels?.huawei) {
+  if (isHuaweiEnabled) {
     classpaths.push(`// Huawei AGConnect`);
     classpaths.push(`classpath 'com.huawei.agconnect:agcp:1.9.3.302'`);
   }
@@ -37,9 +39,10 @@ export function withAndroidProjectBuildGradle(
 ): ExpoConfig {
   return withProjectBuildGradle(config, (nextConfig) => {
     const { vendorChannels } = props;
+    const isHuaweiEnabled = vendorChannels?.huawei?.enabled === true;
     const validator = new Validator(nextConfig.modResults.contents);
 
-    if (vendorChannels?.huawei) {
+    if (isHuaweiEnabled) {
       validator.register('jpush-huawei-maven-buildscript', (src) => {
         console.log(
           '\n[MX_JPush_Expo] 配置 buildscript repositories 华为 Maven 仓库 ...'
@@ -91,7 +94,7 @@ export function withAndroidProjectBuildGradle(
       });
     }
 
-    if (vendorChannels?.huawei) {
+    if (isHuaweiEnabled) {
       validator.register('jpush-huawei-maven-allprojects', (src) => {
         console.log(
           '\n[MX_JPush_Expo] 配置 allprojects repositories 华为 Maven 仓库 ...'
