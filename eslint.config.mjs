@@ -35,4 +35,10 @@ export default [
       },
     },
   },
+  {
+    files: ['plugin/src/ios/appDelegate.ts'],
+    rules: {
+      'no-useless-escape': 'off',
+    },
+  },
 ];
