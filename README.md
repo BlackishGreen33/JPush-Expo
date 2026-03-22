@@ -347,6 +347,12 @@ npm run test -- --runInBand
 npm run lint
 ```
 
+相关文档：
+
+- 开发与维护流程见 [`DEVELOPMENT.md`](./DEVELOPMENT.md)
+- 插件内部结构见 [`plugin/README.md`](./plugin/README.md)
+- 历史版本更新见 [`CHANGELOG.md`](./CHANGELOG.md)
+
 ### 测试覆盖重点
 
 - 参数校验与插件入口 smoke

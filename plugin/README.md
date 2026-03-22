@@ -2,6 +2,12 @@
 
 `plugin/` 目录承载了 `mx-jpush-expo` 的 TypeScript 实现、原生 fixture 测试和编译产物，是贡献者理解插件行为的第一入口。
 
+相关文档：
+
+- 接入与使用说明：[`README.md`](../README.md)
+- 开发流程与发布说明：[`DEVELOPMENT.md`](../DEVELOPMENT.md)
+- 历史版本更新：[`CHANGELOG.md`](../CHANGELOG.md)
+
 ## 目录概览
 
 ```text
