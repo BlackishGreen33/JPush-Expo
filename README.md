@@ -1,16 +1,19 @@
 <div align="center">
 
-# MX-JPush-Expo
+  <h1>MX-JPush-Expo</h1>
 
-一个面向 <strong>Expo prebuild / Dev Client</strong> 的 JPush Config Plugin。<br />
-自动注入 iOS / Android 原生配置，并支持主流 Android 厂商通道。
+  <p>
+    一个面向 <strong>Expo prebuild / Dev Client</strong> 的 JPush Config Plugin。<br />
+    自动注入 iOS / Android 原生配置，并支持主流 Android 厂商通道。
+  </p>
 
-<p>
-  <a href="https://www.npmjs.com/package/mx-jpush-expo"><img alt="npm version" src="https://img.shields.io/npm/v/mx-jpush-expo?logo=npm&label=npm"></a>
-  <a href="https://github.com/konodioda727/JPush-Expo/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/konodioda727/JPush-Expo/ci.yml?branch=main&logo=githubactions&label=CI"></a>
-  <a href="https://github.com/konodioda727/JPush-Expo/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/github/license/konodioda727/JPush-Expo"></a>
-  <img alt="Expo SDK 53+" src="https://img.shields.io/badge/Expo%20SDK-53%2B-000020?logo=expo">
-</p>
+  <p>
+    <a href="https://www.npmjs.com/package/mx-jpush-expo"><img alt="npm version" src="https://img.shields.io/npm/v/mx-jpush-expo?logo=npm&label=npm"></a>
+    <a href="https://github.com/konodioda727/JPush-Expo/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/konodioda727/JPush-Expo/ci.yml?branch=main&logo=githubactions&label=CI"></a>
+    <a href="https://github.com/konodioda727/JPush-Expo/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/github/license/konodioda727/JPush-Expo"></a>
+    <img alt="Expo SDK 53+" src="https://img.shields.io/badge/Expo%20SDK-53%2B-000020?logo=expo">
+    <a href="https://nodejs.org/"><img alt="Node.js >=18.18.0" src="https://img.shields.io/badge/Node.js-%3E%3D18.18.0-339933?logo=nodedotjs&logoColor=white"></a>
+  </p>
 
 </div>
 
