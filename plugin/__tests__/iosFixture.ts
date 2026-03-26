@@ -1,8 +1,11 @@
 import { compileModsAsync } from 'expo/config-plugins';
 import * as fs from 'fs';
+import { createRequire } from 'module';
 import * as os from 'os';
 import * as path from 'path';
 import withJPush from '../src';
+import { JPushPluginProps } from '../src/types';
+import { createExpoConfig, createPluginProps } from './testProps';
 
 type PlistModule = {
   build: (value: Record<string, unknown>) => string;
@@ -42,12 +45,13 @@ type XcodeModule = {
   project: (filePath: string) => XcodeProject;
 };
 
-const expoPackageRoot = path.dirname(require.resolve('expo/package.json'));
-const plist = require(
-  require.resolve('@expo/plist', { paths: [expoPackageRoot] })
+const requireFromTests = createRequire(__filename);
+const expoPackageRoot = path.dirname(requireFromTests.resolve('expo/package.json'));
+const plist = requireFromTests(
+  requireFromTests.resolve('@expo/plist', { paths: [expoPackageRoot] })
 ).default as PlistModule;
-const xcode = require(
-  require.resolve('xcode', { paths: [expoPackageRoot] })
+const xcode = requireFromTests(
+  requireFromTests.resolve('xcode', { paths: [expoPackageRoot] })
 ) as XcodeModule;
 
 export const FIXTURE_ROOT = path.join(__dirname, 'fixtures', 'ios-project');
@@ -153,18 +157,13 @@ export function removeBridgingHeaderBuildSetting(projectRoot: string): void {
   fs.writeFileSync(pbxprojPath, nextContents);
 }
 
-export async function compileIosMods(projectRoot: string): Promise<void> {
+export async function compileIosMods(
+  projectRoot: string,
+  propsOverrides: Partial<JPushPluginProps> = {}
+): Promise<void> {
   const config = withJPush(
-    {
-      name: 'app',
-      slug: 'app',
-      version: '1.0.0',
-    },
-    {
-      appKey: 'test-app-key',
-      channel: 'test-channel',
-      packageName: 'com.example.test',
-    }
+    createExpoConfig(),
+    createPluginProps(propsOverrides)
   );
 
   await compileModsAsync(config, {
