@@ -1,5 +1,6 @@
 import * as fs from 'fs';
-import * as path from 'path';
+import { compileModsAsync } from 'expo/config-plugins';
+import withJPush from '../src';
 import {
   APP_BRIDGING_HEADER_PATH,
   J_PUSH_IMPORTS,
@@ -14,6 +15,7 @@ import {
   removeBridgingHeaderBuildSetting,
   writeInfoPlist,
 } from './iosFixture';
+import { createExpoConfig, createPluginProps } from './testProps';
 
 registerIosFixtureLifecycleHooks();
 
@@ -159,5 +161,35 @@ describe('native iOS config mods', () => {
           )
       )
     ).toBe(true);
+  });
+
+  it('keeps iOS Info.plist values isolated across independently configured plugin instances', async () => {
+    const projectRootA = createProjectRoot();
+    const projectRootB = createProjectRoot();
+    const configA = withJPush(
+      createExpoConfig(),
+      createPluginProps({ appKey: 'ios-a', channel: 'chan-a' })
+    );
+    const configB = withJPush(
+      createExpoConfig(),
+      createPluginProps({ appKey: 'ios-b', channel: 'chan-b' })
+    );
+
+    await compileModsAsync(configA, {
+      projectRoot: projectRootA,
+      platforms: ['ios'],
+    });
+    await compileModsAsync(configB, {
+      projectRoot: projectRootB,
+      platforms: ['ios'],
+    });
+
+    const infoPlistA = readInfoPlist(projectRootA);
+    const infoPlistB = readInfoPlist(projectRootB);
+
+    expect(infoPlistA.JPUSH_APPKEY).toBe('ios-a');
+    expect(infoPlistA.JPUSH_CHANNEL).toBe('chan-a');
+    expect(infoPlistB.JPUSH_APPKEY).toBe('ios-b');
+    expect(infoPlistB.JPUSH_CHANNEL).toBe('chan-b');
   });
 });

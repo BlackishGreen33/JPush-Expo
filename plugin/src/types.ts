@@ -101,6 +101,31 @@ export interface JPushPluginProps {
 }
 
 /**
+ * 插件内部使用的已归一化配置
+ */
+export interface ResolvedJPushPluginProps extends JPushPluginProps {
+  apsForProduction: boolean;
+}
+
+function validateBooleanVendorChannel(
+  vendorChannels: VendorChannelConfig | undefined,
+  key: 'huawei' | 'fcm',
+  label: string
+): void {
+  const channel = vendorChannels?.[key];
+
+  if (!channel) {
+    return;
+  }
+
+  if (typeof channel.enabled !== 'boolean') {
+    throw new Error(
+      `[MX_JPush_Expo] vendorChannels.${label}.enabled 必须存在且为布尔值`
+    );
+  }
+}
+
+/**
  * 验证插件参数
  * @throws {Error} 当参数无效时抛出错误
  */
@@ -124,4 +149,19 @@ export function validateProps(props: JPushPluginProps | undefined): asserts prop
   if (props.apsForProduction !== undefined && typeof props.apsForProduction !== 'boolean') {
     throw new Error('[MX_JPush_Expo] apsForProduction 必须是布尔值');
   }
+
+  validateBooleanVendorChannel(props.vendorChannels, 'huawei', 'huawei');
+  validateBooleanVendorChannel(props.vendorChannels, 'fcm', 'fcm');
+}
+
+/**
+ * 归一化插件参数，补齐内部默认值
+ */
+export function resolveProps(
+  props: JPushPluginProps
+): ResolvedJPushPluginProps {
+  return {
+    ...props,
+    apsForProduction: props.apsForProduction ?? false,
+  };
 }

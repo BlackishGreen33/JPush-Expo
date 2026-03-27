@@ -3,8 +3,9 @@
  * 处理 Gradle 8.0 版本兼容性问题
  */
 
-import { ConfigPlugin, withGradleProperties } from 'expo/config-plugins';
-import { getVendorChannels } from '../utils/config';
+import { ExpoConfig } from 'expo/config';
+import { withGradleProperties } from 'expo/config-plugins';
+import { ResolvedJPushPluginProps } from '../types';
 
 type GradleProperty =
   | {
@@ -56,8 +57,30 @@ export function applyAndroidGradleProperties(properties: GradleProperty[]): Grad
  * - 当前使用的 AGC 版本为 1.9.1.301，理论上不需要此配置
  * - 但为了兼容性和避免潜在问题，仍然添加此配置
  */
-export const withAndroidGradleProperties: ConfigPlugin = (config) =>
-  withGradleProperties(config, (config) => {
-    config.modResults = applyAndroidGradleProperties(config.modResults as GradleProperty[]) as typeof config.modResults;
-    return config;
+export function withAndroidGradleProperties(
+  config: ExpoConfig,
+  props: Pick<ResolvedJPushPluginProps, 'vendorChannels'>
+): ExpoConfig {
+  return withGradleProperties(config, (nextConfig) => {
+    if (props.vendorChannels?.huawei?.enabled === true) {
+      console.log(
+        '\n[MX_JPush_Expo] 配置 gradle.properties 华为 AGC 兼容性（Gradle 8.0）...'
+      );
+
+      const existingProp = nextConfig.modResults.find(
+        (prop) =>
+          prop.type === 'property' && prop.key === 'apmsInstrumentationEnabled'
+      );
+
+      if (!existingProp) {
+        nextConfig.modResults.push({
+          type: 'property',
+          key: 'apmsInstrumentationEnabled',
+          value: 'false',
+        });
+      }
+    }
+
+    return nextConfig;
   });
+}

@@ -5,7 +5,7 @@
  * 支持 Expo SDK 53+ 和 React Native 0.79.5+
  * 
  * @author MuxiStudio
- * @version 1.2.2
+ * @version 1.2.3-beta.0
  * 
  * 参考文档：
  * - JPush 集成 Expo: https://juejin.cn/post/7423235127716659239
@@ -18,8 +18,7 @@
  */
 
 import { ConfigPlugin, createRunOncePlugin } from 'expo/config-plugins';
-import { JPushPluginProps, validateProps } from './types';
-import { setConfig } from './utils/config';
+import { JPushPluginProps, resolveProps, validateProps } from './types';
 import { withIOSConfig } from './ios';
 import { withAndroidConfig } from './android';
 
@@ -62,15 +61,13 @@ const withJPush: ConfigPlugin<JPushPluginProps> = (config, props) => {
   try {
     // 验证配置参数
     validateProps(props);
-
-    // 设置全局配置
-    setConfig(props.appKey, props.channel, props.packageName, props.apsForProduction, props.vendorChannels);
+    const resolvedProps = resolveProps(props);
 
     // 应用 iOS 配置
-    config = withIOSConfig(config);
+    config = withIOSConfig(config, resolvedProps);
 
     // 应用 Android 配置
-    config = withAndroidConfig(config);
+    config = withAndroidConfig(config, resolvedProps);
 
     return config;
   } catch (error) {
@@ -83,4 +80,4 @@ const withJPush: ConfigPlugin<JPushPluginProps> = (config, props) => {
 /**
  * 导出插件（使用 createRunOncePlugin 确保插件只运行一次）
  */
-export default createRunOncePlugin(withJPush, 'mx-jpush-expo', '1.2.2');
+export default createRunOncePlugin(withJPush, 'mx-jpush-expo', '1.2.3-beta.0');

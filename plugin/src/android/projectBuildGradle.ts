@@ -3,73 +3,26 @@
  * 添加厂商通道所需的 classpath 依赖
  */
 
-import { ConfigPlugin, withProjectBuildGradle } from 'expo/config-plugins';
-import {
-  removeGeneratedContents,
-  syncGeneratedContentsAtLine,
-} from '../utils/generateCode';
-import {
-  ensureNestedBlock,
-  ensureTopLevelBlock,
-  findNestedBlockRange,
-} from '../utils/sourceCode';
-import { getVendorChannels } from '../utils/config';
-
-type ProjectVendorFlags = {
-  fcm: boolean;
-  honor: boolean;
-  huawei: boolean;
-};
-
-const LEGACY_PROJECT_BUILD_TAGS = [
-  'jpush-huawei-maven-buildscript',
-  'jpush-honor-maven-buildscript',
-  'jpush-vendor-classpaths',
-  'jpush-huawei-maven-allprojects',
-  'jpush-honor-maven-allprojects',
-];
-
-function getProjectVendorFlags(): ProjectVendorFlags {
-  const vendorChannels = getVendorChannels();
-
-  return {
-    fcm: !!vendorChannels?.fcm?.enabled,
-    honor: !!vendorChannels?.honor,
-    huawei: !!vendorChannels?.huawei?.enabled,
-  };
-}
-
-/**
- * 生成 buildscript repositories 仓库依赖
- */
-const getBuildscriptRepositories = (): string => {
-  const vendorFlags = getProjectVendorFlags();
-  const repositories: string[] = [];
-
-  if (vendorFlags.huawei) {
-    repositories.push(`maven { url 'https://developer.huawei.com/repo/' }`);
-  }
-
-  if (vendorFlags.honor) {
-    repositories.push(`maven { url 'https://developer.hihonor.com/repo' }`);
-  }
-
-  return repositories.join('\n        ');
-};
+import { ExpoConfig } from 'expo/config';
+import { withProjectBuildGradle } from 'expo/config-plugins';
+import { ResolvedJPushPluginProps, VendorChannelConfig } from '../types';
+import { mergeContents } from '../utils/generateCode';
+import { Validator } from '../utils/codeValidator';
 
 /**
  * 生成厂商通道 classpath 依赖
  */
-const getVendorClasspaths = (): string => {
-  const vendorFlags = getProjectVendorFlags();
+const getVendorClasspaths = (vendorChannels?: VendorChannelConfig): string => {
+  const isHuaweiEnabled = vendorChannels?.huawei?.enabled === true;
+  const isFcmEnabled = vendorChannels?.fcm?.enabled === true;
   const classpaths: string[] = [];
 
-  if (vendorFlags.fcm) {
+  if (isFcmEnabled) {
     classpaths.push(`// Google Services for FCM`);
     classpaths.push(`classpath 'com.google.gms:google-services:4.4.0'`);
   }
 
-  if (vendorFlags.huawei) {
+  if (isHuaweiEnabled) {
     classpaths.push(`// Huawei AGConnect`);
     classpaths.push(`classpath 'com.huawei.agconnect:agcp:1.9.3.302'`);
   }
@@ -182,9 +135,140 @@ export function applyAndroidProjectBuildGradle(contents: string): string {
 /**
  * 配置 Android project/build.gradle
  */
-export const withAndroidProjectBuildGradle: ConfigPlugin = (config) =>
-  withProjectBuildGradle(config, (config) => {
-    console.log('\n[MX_JPush_Expo] 配置 Android project/build.gradle ...');
-    config.modResults.contents = applyAndroidProjectBuildGradle(config.modResults.contents);
-    return config;
+export function withAndroidProjectBuildGradle(
+  config: ExpoConfig,
+  props: Pick<ResolvedJPushPluginProps, 'vendorChannels'>
+): ExpoConfig {
+  return withProjectBuildGradle(config, (nextConfig) => {
+    const { vendorChannels } = props;
+    const isHuaweiEnabled = vendorChannels?.huawei?.enabled === true;
+    const validator = new Validator(nextConfig.modResults.contents);
+
+    if (isHuaweiEnabled) {
+      validator.register('jpush-huawei-maven-buildscript', (src) => {
+        console.log(
+          '\n[MX_JPush_Expo] 配置 buildscript repositories 华为 Maven 仓库 ...'
+        );
+
+        return mergeContents({
+          src,
+          newSrc: `maven { url 'https://developer.huawei.com/repo/' }`,
+          tag: 'jpush-huawei-maven-buildscript',
+          anchor: /buildscript\s*\{/,
+          offset: 2,
+          comment: '//',
+        });
+      });
+    }
+
+    if (vendorChannels?.honor) {
+      validator.register('jpush-honor-maven-buildscript', (src) => {
+        console.log(
+          '\n[MX_JPush_Expo] 配置 buildscript repositories 荣耀 Maven 仓库 ...'
+        );
+
+        return mergeContents({
+          src,
+          newSrc: `maven { url 'https://developer.hihonor.com/repo' }`,
+          tag: 'jpush-honor-maven-buildscript',
+          anchor: /buildscript\s*\{/,
+          offset: 2,
+          comment: '//',
+        });
+      });
+    }
+
+    const classpaths = getVendorClasspaths(vendorChannels);
+    if (classpaths) {
+      validator.register('classpath', (src) => {
+        console.log(
+          '\n[MX_JPush_Expo] 配置 buildscript dependencies classpath ...'
+        );
+
+        return mergeContents({
+          src,
+          newSrc: classpaths,
+          tag: 'jpush-vendor-classpaths',
+          anchor: /dependencies\s*\{/,
+          offset: 1,
+          comment: '//',
+        });
+      });
+    }
+
+    if (isHuaweiEnabled) {
+      validator.register('jpush-huawei-maven-allprojects', (src) => {
+        console.log(
+          '\n[MX_JPush_Expo] 配置 allprojects repositories 华为 Maven 仓库 ...'
+        );
+
+        if (!/allprojects\s*\{/.test(src)) {
+          return { contents: src, didMerge: false, didClear: false };
+        }
+
+        const hasRepositories = /allprojects\s*\{[^}]*repositories\s*\{/.test(src);
+
+        if (hasRepositories) {
+          return mergeContents({
+            src,
+            newSrc: `maven { url 'https://developer.huawei.com/repo/' }`,
+            tag: 'jpush-huawei-maven-allprojects',
+            anchor: /allprojects\s*\{/,
+            offset: 2,
+            comment: '//',
+          });
+        }
+
+        return mergeContents({
+          src,
+          newSrc: `repositories {
+        maven { url 'https://developer.huawei.com/repo/' }
+    }`,
+          tag: 'jpush-huawei-maven-allprojects',
+          anchor: /allprojects\s*\{/,
+          offset: 1,
+          comment: '//',
+        });
+      });
+    }
+
+    if (vendorChannels?.honor) {
+      validator.register('jpush-honor-maven-allprojects', (src) => {
+        console.log(
+          '\n[MX_JPush_Expo] 配置 allprojects repositories 荣耀 Maven 仓库 ...'
+        );
+
+        if (!/allprojects\s*\{/.test(src)) {
+          return { contents: src, didMerge: false, didClear: false };
+        }
+
+        const hasRepositories = /allprojects\s*\{[^}]*repositories\s*\{/.test(src);
+
+        if (hasRepositories) {
+          return mergeContents({
+            src,
+            newSrc: `maven { url 'https://developer.hihonor.com/repo' }`,
+            tag: 'jpush-honor-maven-allprojects',
+            anchor: /allprojects\s*\{/,
+            offset: 2,
+            comment: '//',
+          });
+        }
+
+        return mergeContents({
+          src,
+          newSrc: `repositories {
+        maven { url 'https://developer.hihonor.com/repo' }
+    }`,
+          tag: 'jpush-honor-maven-allprojects',
+          anchor: /allprojects\s*\{/,
+          offset: 1,
+          comment: '//',
+        });
+      });
+    }
+
+    nextConfig.modResults.contents = validator.invoke();
+    return nextConfig;
   });
+}
