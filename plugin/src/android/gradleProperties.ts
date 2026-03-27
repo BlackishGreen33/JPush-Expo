@@ -6,6 +6,47 @@
 import { ConfigPlugin, withGradleProperties } from 'expo/config-plugins';
 import { getVendorChannels } from '../utils/config';
 
+type GradleProperty =
+  | {
+      type: 'comment';
+      value: string;
+    }
+  | {
+      type: 'empty';
+    }
+  | {
+      type: 'property';
+      key: string;
+      value: string;
+    };
+
+export function applyAndroidGradleProperties(properties: GradleProperty[]): GradleProperty[] {
+  const vendorChannels = getVendorChannels();
+
+  if (!vendorChannels?.huawei?.enabled) {
+    return properties;
+  }
+
+  console.log('\n[MX_JPush_Expo] 配置 gradle.properties 华为 AGC 兼容性（Gradle 8.0）...');
+
+  const existingProp = properties.find(
+    (prop) => prop.type === 'property' && prop.key === 'apmsInstrumentationEnabled'
+  );
+
+  if (existingProp) {
+    return properties;
+  }
+
+  return [
+    ...properties,
+    {
+      type: 'property',
+      key: 'apmsInstrumentationEnabled',
+      value: 'false',
+    },
+  ];
+}
+
 /**
  * 配置 Android gradle.properties
  *
@@ -17,27 +58,6 @@ import { getVendorChannels } from '../utils/config';
  */
 export const withAndroidGradleProperties: ConfigPlugin = (config) =>
   withGradleProperties(config, (config) => {
-    const vendorChannels = getVendorChannels();
-
-    // 如果启用了华为推送，添加 APMS 配置（Gradle 8.0 兼容性）
-    if (vendorChannels?.huawei) {
-      console.log(
-        '\n[MX_JPush_Expo] 配置 gradle.properties 华为 AGC 兼容性（Gradle 8.0）...'
-      );
-
-      // 检查是否已存在该配置
-      const existingProp = config.modResults.find(
-        (prop) => prop.type === 'property' && prop.key === 'apmsInstrumentationEnabled'
-      );
-
-      if (!existingProp) {
-        config.modResults.push({
-          type: 'property',
-          key: 'apmsInstrumentationEnabled',
-          value: 'false',
-        });
-      }
-    }
-
+    config.modResults = applyAndroidGradleProperties(config.modResults as GradleProperty[]) as typeof config.modResults;
     return config;
   });
