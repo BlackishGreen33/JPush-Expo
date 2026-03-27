@@ -1,3 +1,5 @@
+import { compileModsAsync } from 'expo/config-plugins';
+import withJPush from '../src';
 import {
   ANDROID_MANIFEST_PATH,
   APP_BUILD_GRADLE_PATH,
@@ -9,6 +11,7 @@ import {
   readFixtureFile,
   registerAndroidFixtureLifecycleHooks,
 } from './androidFixture';
+import { createExpoConfig, createPluginProps } from './testProps';
 
 registerAndroidFixtureLifecycleHooks();
 
@@ -200,5 +203,97 @@ describe('native Android config mods', () => {
         "apply plugin: 'com.huawei.agconnect'"
       )
     ).toBe(1);
+  });
+
+  it('keeps Android config values isolated across independently configured plugin instances', async () => {
+    const projectRootA = createProjectRoot();
+    const projectRootB = createProjectRoot();
+    const configA = withJPush(
+      createExpoConfig(),
+      createPluginProps({ packageName: 'com.example.alpha' })
+    );
+    const configB = withJPush(
+      createExpoConfig(),
+      createPluginProps({
+        packageName: 'com.example.beta',
+        vendorChannels: { huawei: { enabled: true } },
+      })
+    );
+
+    await compileModsAsync(configA, {
+      projectRoot: projectRootA,
+      platforms: ['android'],
+    });
+    await compileModsAsync(configB, {
+      projectRoot: projectRootB,
+      platforms: ['android'],
+    });
+
+    const appBuildGradleA = readFixtureFile(projectRootA, APP_BUILD_GRADLE_PATH);
+    const appBuildGradleB = readFixtureFile(projectRootB, APP_BUILD_GRADLE_PATH);
+    const gradlePropertiesA = readFixtureFile(
+      projectRootA,
+      GRADLE_PROPERTIES_PATH
+    );
+    const gradlePropertiesB = readFixtureFile(
+      projectRootB,
+      GRADLE_PROPERTIES_PATH
+    );
+
+    expect(appBuildGradleA).toContain('"com.example.alpha"');
+    expect(appBuildGradleA).not.toContain(
+      "implementation 'com.huawei.hms:push:6.13.0.300'"
+    );
+    expect(gradlePropertiesA).not.toContain('apmsInstrumentationEnabled=false');
+
+    expect(appBuildGradleB).toContain('"com.example.beta"');
+    expect(appBuildGradleB).toContain(
+      "implementation 'com.huawei.hms:push:6.13.0.300'"
+    );
+    expect(gradlePropertiesB).toContain('apmsInstrumentationEnabled=false');
+  });
+
+  it('does not inject Huawei or FCM integrations when their enabled flags are false', async () => {
+    const projectRoot = createProjectRoot();
+
+    await compileAndroidMods(projectRoot, {
+      vendorChannels: {
+        huawei: { enabled: false },
+        fcm: { enabled: false },
+      },
+    });
+
+    const appBuildGradle = readFixtureFile(projectRoot, APP_BUILD_GRADLE_PATH);
+    const projectBuildGradle = readFixtureFile(
+      projectRoot,
+      PROJECT_BUILD_GRADLE_PATH
+    );
+    const gradleProperties = readFixtureFile(
+      projectRoot,
+      GRADLE_PROPERTIES_PATH
+    );
+
+    expect(appBuildGradle).not.toContain(
+      "implementation 'com.huawei.hms:push:6.13.0.300'"
+    );
+    expect(appBuildGradle).not.toContain(
+      "implementation 'com.google.firebase:firebase-messaging:24.1.0'"
+    );
+    expect(appBuildGradle).not.toContain(
+      "apply plugin: 'com.google.gms.google-services'"
+    );
+    expect(appBuildGradle).not.toContain(
+      "apply plugin: 'com.huawei.agconnect'"
+    );
+    expect(projectBuildGradle).not.toContain(
+      "classpath 'com.google.gms:google-services:4.4.0'"
+    );
+    expect(projectBuildGradle).not.toContain(
+      "classpath 'com.huawei.agconnect:agcp:1.9.3.302'"
+    );
+    expect(projectBuildGradle).not.toContain(
+      "maven { url 'https://developer.huawei.com/repo/' }"
+    );
+    expect(gradleProperties).not.toContain('apmsInstrumentationEnabled=false');
   });
 });

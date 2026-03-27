@@ -18,8 +18,7 @@
  */
 
 import { ConfigPlugin, createRunOncePlugin } from 'expo/config-plugins';
-import { JPushPluginProps, validateProps } from './types';
-import { setConfig } from './utils/config';
+import { JPushPluginProps, resolveProps, validateProps } from './types';
 import { withIOSConfig } from './ios';
 import { withAndroidConfig } from './android';
 
@@ -62,15 +61,13 @@ const withJPush: ConfigPlugin<JPushPluginProps> = (config, props) => {
   try {
     // 验证配置参数
     validateProps(props);
-
-    // 设置全局配置
-    setConfig(props.appKey, props.channel, props.packageName, props.apsForProduction, props.vendorChannels);
+    const resolvedProps = resolveProps(props);
 
     // 应用 iOS 配置
-    config = withIOSConfig(config);
+    config = withIOSConfig(config, resolvedProps);
 
     // 应用 Android 配置
-    config = withAndroidConfig(config);
+    config = withAndroidConfig(config, resolvedProps);
 
     return config;
   } catch (error) {
