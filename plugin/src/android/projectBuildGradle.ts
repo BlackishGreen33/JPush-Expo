@@ -27,8 +27,110 @@ const getVendorClasspaths = (vendorChannels?: VendorChannelConfig): string => {
     classpaths.push(`classpath 'com.huawei.agconnect:agcp:1.9.3.302'`);
   }
 
-  return classpaths.length > 0 ? classpaths.join('\n        ') : '';
+  return classpaths.join('\n        ');
 };
+
+/**
+ * 生成 allprojects repositories 仓库依赖
+ */
+const getAllprojectsRepositories = (): string => {
+  const vendorFlags = getProjectVendorFlags();
+  const repositories: string[] = [];
+
+  if (vendorFlags.huawei) {
+    repositories.push(`maven { url 'https://developer.huawei.com/repo/' }`);
+  }
+
+  if (vendorFlags.honor) {
+    repositories.push(`maven { url 'https://developer.hihonor.com/repo' }`);
+  }
+
+  return repositories.join('\n        ');
+};
+
+function ensureProjectBuildscriptBlock(src: string): string {
+  let nextContents = ensureTopLevelBlock(src, 'buildscript');
+  nextContents = ensureNestedBlock(nextContents, /^\s*buildscript\s*\{/, 'repositories');
+  nextContents = ensureNestedBlock(nextContents, /^\s*buildscript\s*\{/, 'dependencies');
+  return nextContents;
+}
+
+function ensureProjectAllprojectsBlock(src: string): string {
+  let nextContents = ensureTopLevelBlock(src, 'allprojects');
+  nextContents = ensureNestedBlock(nextContents, /^\s*allprojects\s*\{/, 'repositories');
+  return nextContents;
+}
+
+function removeLegacyGeneratedSections(contents: string): string {
+  return LEGACY_PROJECT_BUILD_TAGS.reduce((currentContents, tag) => {
+    return removeGeneratedContents(currentContents, tag) ?? currentContents;
+  }, contents);
+}
+
+export function applyAndroidProjectBuildGradle(contents: string): string {
+  let nextContents = removeLegacyGeneratedSections(contents);
+
+  const buildscriptRepositories = getBuildscriptRepositories();
+  const buildscriptClasspaths = getVendorClasspaths();
+  if (buildscriptRepositories || buildscriptClasspaths) {
+    nextContents = ensureProjectBuildscriptBlock(nextContents);
+  }
+
+  const allprojectsRepositories = getAllprojectsRepositories();
+  if (allprojectsRepositories) {
+    nextContents = ensureProjectAllprojectsBlock(nextContents);
+  }
+
+  const buildscriptRepositoriesRange = findNestedBlockRange(
+    nextContents,
+    /^\s*buildscript\s*\{/,
+    /^\s*repositories\s*\{/
+  );
+  if (buildscriptRepositoriesRange) {
+    nextContents = syncGeneratedContentsAtLine({
+      src: nextContents,
+      newSrc: buildscriptRepositories,
+      tag: 'jpush-buildscript-repositories',
+      lineIndex: buildscriptRepositoriesRange.startLine,
+      offset: 1,
+      comment: '//',
+    }).contents;
+  }
+
+  const buildscriptDependenciesRange = findNestedBlockRange(
+    nextContents,
+    /^\s*buildscript\s*\{/,
+    /^\s*dependencies\s*\{/
+  );
+  if (buildscriptDependenciesRange) {
+    nextContents = syncGeneratedContentsAtLine({
+      src: nextContents,
+      newSrc: buildscriptClasspaths,
+      tag: 'jpush-buildscript-classpaths',
+      lineIndex: buildscriptDependenciesRange.startLine,
+      offset: 1,
+      comment: '//',
+    }).contents;
+  }
+
+  const allprojectsRepositoriesRange = findNestedBlockRange(
+    nextContents,
+    /^\s*allprojects\s*\{/,
+    /^\s*repositories\s*\{/
+  );
+  if (allprojectsRepositoriesRange) {
+    nextContents = syncGeneratedContentsAtLine({
+      src: nextContents,
+      newSrc: allprojectsRepositories,
+      tag: 'jpush-allprojects-repositories',
+      lineIndex: allprojectsRepositoriesRange.startLine,
+      offset: 1,
+      comment: '//',
+    }).contents;
+  }
+
+  return nextContents;
+}
 
 /**
  * 配置 Android project/build.gradle

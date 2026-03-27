@@ -7,27 +7,102 @@
 import { ConfigPlugin, withXcodeProject } from 'expo/config-plugins';
 import * as fs from 'fs';
 import * as path from 'path';
+import { normalizeQuotedName } from '../utils/sourceCode';
 
-const BRIDGING_HEADER_BUILD_SETTING = 'SWIFT_OBJC_BRIDGING_HEADER';
-const BRIDGING_HEADER_FILE_SUFFIX = '-Bridging-Header.h';
-const J_PUSH_IMPORTS = [
+const APPLICATION_PRODUCT_TYPE = 'com.apple.product-type.application';
+const BRIDGING_HEADER_IMPORTS = [
   '#import <JPUSHService.h>',
   '#import <RCTJPushModule.h>',
   '#import <RCTJPushEventQueue.h>',
 ];
 
-type XcodeBuildConfiguration = {
-  buildSettings?: Record<string, string | string[] | undefined>;
+type XcodeProjectLike = {
+  getTarget: (productType: string) => { uuid: string; target: XcodeTargetLike } | null;
+  pbxXCBuildConfigurationSection: () => Record<string, XcodeBuildConfigurationLike>;
+  pbxXCConfigurationList: () => Record<string, XcodeConfigurationListLike>;
 };
 
-type XcodeTarget = {
+type XcodeTargetLike = {
   name?: string;
   buildConfigurationList?: string;
 };
 
-const unquote = (value: string): string => value.replace(/^"(.*)"$/, '$1');
-const getDefaultRelativeHeaderPath = (targetName: string): string =>
-  `${targetName}/${targetName}${BRIDGING_HEADER_FILE_SUFFIX}`;
+type XcodeBuildConfigurationLike = {
+  buildSettings?: Record<string, string | string[] | undefined>;
+};
+
+type XcodeConfigurationListLike = {
+  buildConfigurations?: Array<{ value: string }>;
+};
+
+type ApplicationTargetInfo = {
+  buildConfigurationIds: string[];
+  targetName: string;
+};
+
+const BRIDGING_HEADER_BUILD_SETTING = 'SWIFT_OBJC_BRIDGING_HEADER';
+const BRIDGING_HEADER_FILE_SUFFIX = '-Bridging-Header.h';
+
+function getApplicationTargetInfo(xcodeProject: XcodeProjectLike): ApplicationTargetInfo {
+  const applicationTarget = xcodeProject.getTarget(APPLICATION_PRODUCT_TYPE);
+  if (!applicationTarget) {
+    throw new Error('[MX_JPush_Expo] 未找到 iOS application target');
+  }
+
+  const targetName = normalizeQuotedName(applicationTarget.target.name);
+  if (!targetName) {
+    throw new Error('[MX_JPush_Expo] 未找到 iOS application target 名称');
+  }
+
+  const buildConfigurationListId = applicationTarget.target.buildConfigurationList;
+  if (!buildConfigurationListId) {
+    throw new Error('[MX_JPush_Expo] 未找到 application target 的 buildConfigurationList');
+  }
+
+  const configurationList = xcodeProject.pbxXCConfigurationList()[buildConfigurationListId];
+  const buildConfigurationIds =
+    configurationList?.buildConfigurations?.map((configuration) => configuration.value) ?? [];
+
+  if (buildConfigurationIds.length === 0) {
+    throw new Error('[MX_JPush_Expo] application target 未关联任何 build configuration');
+  }
+
+  return {
+    buildConfigurationIds,
+    targetName,
+  };
+}
+
+function getDefaultRelativeHeaderPath(targetName: string): string {
+  return `${targetName}/${targetName}${BRIDGING_HEADER_FILE_SUFFIX}`;
+}
+
+function getExistingBridgingHeaderPath(
+  xcodeProject: XcodeProjectLike,
+  buildConfigurationIds: string[]
+): string | undefined {
+  const configurations = xcodeProject.pbxXCBuildConfigurationSection();
+
+  for (const configurationId of buildConfigurationIds) {
+    const currentValue =
+      configurations[configurationId]?.buildSettings?.[BRIDGING_HEADER_BUILD_SETTING];
+
+    if (typeof currentValue === 'string' && currentValue.trim()) {
+      return currentValue;
+    }
+
+    if (Array.isArray(currentValue)) {
+      const firstValue = currentValue.find(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0
+      );
+      if (firstValue) {
+        return firstValue;
+      }
+    }
+  }
+
+  return undefined;
+}
 
 function normalizeRelativeHeaderPath(
   existingPath: string | undefined,
@@ -41,7 +116,8 @@ function normalizeRelativeHeaderPath(
 
   const normalizedPath = path.posix
     .normalize(
-      unquote(existingPath)
+      existingPath
+        .replace(/^"(.*)"$/, '$1')
         .replace(/^\$\(SRCROOT\)\//, '')
         .replace(/\$\(TARGET_NAME\)/g, targetName)
         .replace(/\\/g, '/')
@@ -64,84 +140,69 @@ function normalizeRelativeHeaderPath(
   return normalizedPath;
 }
 
-function getTargetBuildConfigurations(
-  xcodeProject: {
-    pbxXCConfigurationList: () => Record<string, { buildConfigurations?: { value: string }[] }>;
-    pbxXCBuildConfigurationSection: () => Record<string, XcodeBuildConfiguration>;
-  },
-  target: XcodeTarget
-): XcodeBuildConfiguration[] {
-  const configurationListId = target.buildConfigurationList;
-  if (!configurationListId) {
-    return [];
-  }
+function resolveBridgingHeaderRelativePath(xcodeProject: XcodeProjectLike): string {
+  const applicationTarget = getApplicationTargetInfo(xcodeProject);
+  const existingPath = getExistingBridgingHeaderPath(
+    xcodeProject,
+    applicationTarget.buildConfigurationIds
+  );
 
-  const configurationList = xcodeProject.pbxXCConfigurationList()[configurationListId];
-  if (!configurationList?.buildConfigurations) {
-    return [];
-  }
-
-  const buildConfigurations = xcodeProject.pbxXCBuildConfigurationSection();
-
-  return configurationList.buildConfigurations
-    .map(({ value }) => buildConfigurations[value])
-    .filter(
-      (configuration): configuration is XcodeBuildConfiguration =>
-        Boolean(configuration)
-    );
+  return normalizeRelativeHeaderPath(existingPath, applicationTarget.targetName);
 }
 
-function getExistingBridgingHeaderPath(
-  configurations: XcodeBuildConfiguration[]
-): string | undefined {
-  for (const configuration of configurations) {
-    const currentValue = configuration.buildSettings?.[BRIDGING_HEADER_BUILD_SETTING];
-    if (typeof currentValue === 'string' && currentValue.trim()) {
-      return currentValue;
+export function applyBridgingHeaderBuildSettings(
+  xcodeProject: XcodeProjectLike,
+  bridgingHeaderPath: string
+): string {
+  const applicationTarget = getApplicationTargetInfo(xcodeProject);
+  const configurations = xcodeProject.pbxXCBuildConfigurationSection();
+
+  for (const configurationId of applicationTarget.buildConfigurationIds) {
+    const configuration = configurations[configurationId];
+    if (!configuration) {
+      continue;
     }
 
-    if (Array.isArray(currentValue)) {
-      for (const value of currentValue) {
-        if (typeof value === 'string' && value.trim()) {
-          return value;
-        }
-      }
-    }
+    configuration.buildSettings = configuration.buildSettings ?? {};
+    configuration.buildSettings.SWIFT_OBJC_BRIDGING_HEADER = bridgingHeaderPath;
   }
 
-  return undefined;
+  return applicationTarget.targetName;
 }
 
-function ensureFileContent(filePath: string): void {
+export function getBridgingHeaderFilePath(
+  projectRoot: string,
+  relativeHeaderPath: string
+): string {
+  return path.join(projectRoot, 'ios', relativeHeaderPath);
+}
+
+export function upsertBridgingHeaderImports(content: string): string {
+  const normalizedContent = content.trimEnd();
+  const missingImports = BRIDGING_HEADER_IMPORTS.filter((importLine) => !content.includes(importLine));
+
+  if (missingImports.length === 0) {
+    return normalizedContent ? `${normalizedContent}\n` : '';
+  }
+
+  const additions = [
+    content.includes('// JPush 相关导入') ? null : '// JPush 相关导入',
+    ...missingImports,
+  ].filter((line): line is string => !!line);
+
+  const prefix = normalizedContent ? `${normalizedContent}\n` : '';
+  return `${prefix}${additions.join('\n')}\n`;
+}
+
+export function syncBridgingHeaderFile(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
-  const currentContent = fs.existsSync(filePath)
-    ? fs.readFileSync(filePath, 'utf8')
-    : '';
-  const currentLines = new Set(
-    currentContent
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-  );
-  const missingImports = J_PUSH_IMPORTS.filter((line) => !currentLines.has(line));
+  const currentContent = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const nextContent = upsertBridgingHeaderImports(currentContent);
 
-  if (missingImports.length === 0 && fs.existsSync(filePath)) {
-    return;
+  if (currentContent !== nextContent) {
+    fs.writeFileSync(filePath, nextContent);
   }
-
-  const trimmedContent = currentContent.trimEnd();
-  const segments: string[] = [];
-
-  if (trimmedContent) {
-    segments.push(trimmedContent, '');
-  }
-
-  segments.push(...missingImports);
-
-  const nextContent = [...segments, ''].join('\n');
-
-  fs.writeFileSync(filePath, nextContent, 'utf8');
 }
 
 /**
@@ -152,45 +213,19 @@ export const withIosBridgingHeader: ConfigPlugin = (config) =>
   withXcodeProject(config, (config) => {
     console.log('\n[MX_JPush_Expo] 配置 Bridging Header ...');
 
-    const xcodeProject = config.modResults;
-    const appTarget = xcodeProject.getTarget('com.apple.product-type.application');
-    const targetName =
-      appTarget?.target?.name && typeof appTarget.target.name === 'string'
-        ? unquote(appTarget.target.name)
-        : config.modRequest.projectName;
-
-    if (!appTarget || !targetName) {
-      console.log('[MX_JPush_Expo] 未找到 iOS app target，跳过 Bridging Header 配置');
-      return config;
-    }
-
-    const targetConfigurations = getTargetBuildConfigurations(
+    const xcodeProject = config.modResults as unknown as XcodeProjectLike;
+    const relativeBridgingHeaderPath = resolveBridgingHeaderRelativePath(xcodeProject);
+    applyBridgingHeaderBuildSettings(
       xcodeProject,
-      appTarget.target
+      `"${relativeBridgingHeaderPath}"`
     );
-    const existingBridgingHeaderPath = getExistingBridgingHeaderPath(
-      targetConfigurations
-    );
-    const relativeBridgingHeaderPath = normalizeRelativeHeaderPath(
-      existingBridgingHeaderPath,
-      targetName
-    );
-    const absoluteBridgingHeaderPath = path.join(
-      config.modRequest.platformProjectRoot,
+
+    const bridgingHeaderFilePath = getBridgingHeaderFilePath(
+      config.modRequest.projectRoot,
       relativeBridgingHeaderPath
     );
 
-    xcodeProject.updateBuildProperty(
-      BRIDGING_HEADER_BUILD_SETTING,
-      `"${relativeBridgingHeaderPath}"`,
-      undefined,
-      targetName
-    );
-
-    ensureFileContent(absoluteBridgingHeaderPath);
-    console.log(
-      `[MX_JPush_Expo] 已确保 ${targetName} 的 Bridging Header: ${relativeBridgingHeaderPath}`
-    );
+    syncBridgingHeaderFile(bridgingHeaderFilePath);
 
     return config;
   });

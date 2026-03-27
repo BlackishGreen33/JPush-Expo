@@ -7,6 +7,47 @@ import { ExpoConfig } from 'expo/config';
 import { withGradleProperties } from 'expo/config-plugins';
 import { ResolvedJPushPluginProps } from '../types';
 
+type GradleProperty =
+  | {
+      type: 'comment';
+      value: string;
+    }
+  | {
+      type: 'empty';
+    }
+  | {
+      type: 'property';
+      key: string;
+      value: string;
+    };
+
+export function applyAndroidGradleProperties(properties: GradleProperty[]): GradleProperty[] {
+  const vendorChannels = getVendorChannels();
+
+  if (!vendorChannels?.huawei?.enabled) {
+    return properties;
+  }
+
+  console.log('\n[MX_JPush_Expo] 配置 gradle.properties 华为 AGC 兼容性（Gradle 8.0）...');
+
+  const existingProp = properties.find(
+    (prop) => prop.type === 'property' && prop.key === 'apmsInstrumentationEnabled'
+  );
+
+  if (existingProp) {
+    return properties;
+  }
+
+  return [
+    ...properties,
+    {
+      type: 'property',
+      key: 'apmsInstrumentationEnabled',
+      value: 'false',
+    },
+  ];
+}
+
 /**
  * 配置 Android gradle.properties
  *

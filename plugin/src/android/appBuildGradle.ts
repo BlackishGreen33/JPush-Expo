@@ -19,8 +19,14 @@ const getNdkConfig = (): string => {
             }`;
 };
 
+const LEGACY_DEFAULT_CONFIG_TAGS = [
+  'jpush-ndk-config',
+  'jpush-manifest-placeholders',
+];
+const LEGACY_DEPENDENCY_TAGS = ['jpush-libs-filetree'];
+
 /**
- * 生成 manifestPlaceholders 代码
+ * 生成 defaultConfig 中的 JPush 配置
  */
 const gradleEnv = (key: string, fallback = '""'): string =>
   `System.getenv("${key}") ?: (project.findProperty("${key}") ?: ${fallback})`;
@@ -183,6 +189,56 @@ const getApplyPlugins = (vendorChannels?: VendorChannelConfig): string => {
 
   return plugins.length > 0 ? plugins.join('\n') : '';
 };
+
+function removeLegacyGeneratedSections(contents: string, tags: string[]): string {
+  return tags.reduce((currentContents, tag) => {
+    return removeGeneratedContents(currentContents, tag) ?? currentContents;
+  }, contents);
+}
+
+export function applyAndroidAppBuildGradle(contents: string): string {
+  let nextContents = removeLegacyGeneratedSections(contents, LEGACY_DEFAULT_CONFIG_TAGS);
+  nextContents = ensureNestedBlock(nextContents, /^\s*android\s*\{/, 'defaultConfig');
+  nextContents = ensureTopLevelBlock(nextContents, 'dependencies');
+
+  const defaultConfigLine = findLineIndex(nextContents, /^\s*defaultConfig\s*\{/);
+  if (defaultConfigLine < 0) {
+    throw new Error('[MX_JPush_Expo] 未找到 defaultConfig 配置块');
+  }
+
+  nextContents = syncGeneratedContentsAtLine({
+    src: nextContents,
+    newSrc: getDefaultConfigSnippet(),
+    tag: 'jpush-default-config',
+    lineIndex: defaultConfigLine,
+    offset: 1,
+    comment: '//',
+  }).contents;
+
+  const dependenciesLine = findLineIndex(nextContents, /^\s*dependencies\s*\{/);
+  if (dependenciesLine < 0) {
+    throw new Error('[MX_JPush_Expo] 未找到 dependencies 配置块');
+  }
+
+  nextContents = removeLegacyGeneratedSections(nextContents, LEGACY_DEPENDENCY_TAGS);
+  nextContents = syncGeneratedContentsAtLine({
+    src: nextContents,
+    newSrc: getJPushDependencies(),
+    tag: 'jpush-dependencies',
+    lineIndex: dependenciesLine,
+    offset: 1,
+    comment: '//',
+  }).contents;
+
+  nextContents = syncGeneratedContentsAtEnd({
+    src: nextContents,
+    newSrc: getApplyPlugins(),
+    tag: 'jpush-apply-plugins',
+    comment: '//',
+  }).contents;
+
+  return nextContents;
+}
 
 /**
  * 配置 Android build.gradle
