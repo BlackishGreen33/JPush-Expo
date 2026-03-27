@@ -1,0 +1,8 @@
+android {
+    namespace "com.example.app"
+    compileSdkVersion 34
+}
+
+dependencies {
+    implementation("com.facebook.react:react-android")
+}
