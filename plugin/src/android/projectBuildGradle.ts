@@ -5,11 +5,11 @@
 
 import { ExpoConfig } from 'expo/config';
 import { withProjectBuildGradle } from 'expo/config-plugins';
-import { ResolvedJPushPluginProps, VendorChannelConfig } from '../types';
-import { mergeContents, removeGeneratedContents, syncGeneratedContentsAtLine } from '../utils/generateCode';
+
+import { VendorChannelConfig } from '../types';
+import { removeGeneratedContents, syncGeneratedContentsAtLine } from '../utils/generateCode';
 import { ensureTopLevelBlock, ensureNestedBlock, findNestedBlockRange } from '../utils/sourceCode';
-import { getVendorChannels, getProjectVendorFlags, LEGACY_PROJECT_BUILD_TAGS, getBuildscriptRepositories } from '../utils/vendorChannels';
-import { Validator } from '../utils/codeValidator';
+import { getProjectVendorFlags, LEGACY_PROJECT_BUILD_TAGS, getBuildscriptRepositories } from '../utils/vendorChannels';
 
 /**
  * 获取厂商通道开启标记
