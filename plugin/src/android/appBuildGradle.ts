@@ -200,9 +200,7 @@ function removeLegacyGeneratedSections(contents: string, tags: string[]): string
 /**
  * 生成 defaultConfig 代码片段
  */
-function getDefaultConfigSnippet(): string {
-  return `${getNdkConfig()}\n${getManifestPlaceholders('', {})}`;
-}
+
 
 export function applyAndroidAppBuildGradle(
   contents: string,

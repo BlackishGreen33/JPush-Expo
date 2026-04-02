@@ -5,7 +5,7 @@
 
 import { ExpoConfig } from 'expo/config';
 import { withGradleProperties } from 'expo/config-plugins';
-import { ResolvedJPushPluginProps, VendorChannelConfig } from '../types';
+import { ResolvedJPushPluginProps } from '../types';
 import { getVendorChannels } from '../utils/vendorChannels';
 
 type GradleProperty =
