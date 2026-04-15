@@ -11,7 +11,6 @@ import {
   replaceGeneratedContentsAtLine,
   syncGeneratedContentsAtEnd,
 } from '../utils/generateCode';
-import { getConfig } from '../utils/config';
 import {
   ensureNestedBlock,
   ensureTopLevelBlock,
@@ -51,19 +50,18 @@ function removeLegacyGeneratedSections(contents: string, tags: string[]): string
   }, contents);
 }
 
+<<<<<<< HEAD
 function getResolvedConfig({
-  packageName,
-  appKey,
-  channel,
+  packageName = '',
+  appKey = '',
+  channel = '',
   vendorChannels,
 }: AndroidBuildGradleConfigInput): ResolvedAndroidBuildGradleConfig {
-  const fallbackConfig = getConfig();
-
   return {
-    appKey: appKey ?? fallbackConfig?.appKey ?? '',
-    channel: channel ?? fallbackConfig?.channel ?? '',
-    packageName: packageName ?? fallbackConfig?.packageName ?? '',
-    vendorChannels: vendorChannels ?? fallbackConfig?.vendorChannels,
+    appKey,
+    channel,
+    packageName,
+    vendorChannels,
   };
 }
 

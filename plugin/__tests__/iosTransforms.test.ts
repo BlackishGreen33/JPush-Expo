@@ -9,7 +9,6 @@ import {
   upsertBridgingHeaderImports,
 } from '../src/ios/bridgingHeader';
 import { applyIosInfoPlist, mergeBackgroundModes } from '../src/ios/infoPlist';
-import { setConfig } from '../src/utils/config';
 
 const readFixture = (fixturePath: string): string =>
   fs.readFileSync(path.join(__dirname, 'fixtures', fixturePath), 'utf8');
@@ -54,10 +53,6 @@ function createMockXcodeProject() {
 }
 
 describe('iOS transforms', () => {
-  beforeEach(() => {
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', true, undefined);
-  });
-
   it('should merge Info.plist background modes without overwriting existing values', () => {
     expect(mergeBackgroundModes(['processing', 'fetch'])).toEqual([
       'processing',

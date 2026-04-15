@@ -6,7 +6,6 @@ import { applyAndroidGradleProperties } from '../src/android/gradleProperties';
 import { applyAndroidProjectBuildGradle } from '../src/android/projectBuildGradle';
 import { applyAndroidSettingsGradle } from '../src/android/settingsGradle';
 import { mergeContents } from '../src/utils/generateCode';
-import { setConfig } from '../src/utils/config';
 
 const readFixture = (fixturePath: string): string =>
   fs.readFileSync(path.join(__dirname, 'fixtures', fixturePath), 'utf8');
@@ -257,11 +256,9 @@ describe('Android transforms', () => {
   });
 
   it('should add gradle.properties compatibility only for Huawei', () => {
-    setConfig(TEST_APP_KEY, TEST_CHANNEL, TEST_PACKAGE_NAME, false, {
+    const withHuawei = applyAndroidGradleProperties([], {
       huawei: { enabled: true },
     });
-
-    const withHuawei = applyAndroidGradleProperties([]);
     expect(withHuawei).toEqual([
       {
         type: 'property',
@@ -270,8 +267,7 @@ describe('Android transforms', () => {
       },
     ]);
 
-    setConfig(TEST_APP_KEY, TEST_CHANNEL, TEST_PACKAGE_NAME, false, undefined);
-    const withoutHuawei = applyAndroidGradleProperties(withHuawei);
+    const withoutHuawei = applyAndroidGradleProperties(withHuawei, undefined);
     expect(withoutHuawei).toBe(withHuawei);
   });
 });
