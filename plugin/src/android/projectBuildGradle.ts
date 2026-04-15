@@ -9,7 +9,47 @@ import { withProjectBuildGradle } from 'expo/config-plugins';
 import { VendorChannelConfig } from '../types';
 import { removeGeneratedContents, syncGeneratedContentsAtLine } from '../utils/generateCode';
 import { ensureTopLevelBlock, ensureNestedBlock, findNestedBlockRange } from '../utils/sourceCode';
-import { getProjectVendorFlags, LEGACY_PROJECT_BUILD_TAGS, getBuildscriptRepositories } from '../utils/vendorChannels';
+
+const LEGACY_PROJECT_BUILD_TAGS = [
+  'jpush-buildscript-repositories',
+  'jpush-buildscript-classpaths',
+  'jpush-allprojects-repositories',
+  'jpush-huawei-maven-buildscript',
+  'jpush-honor-maven-buildscript',
+  'jpush-vendor-classpaths',
+  'jpush-huawei-maven-allprojects',
+  'jpush-honor-maven-allprojects',
+];
+
+function getProjectVendorFlags(
+  vendorChannels?: VendorChannelConfig
+): Record<string, boolean> {
+  if (!vendorChannels) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(vendorChannels).map(([key, value]) => [
+      key,
+      Boolean(value?.enabled || value?.appId || value?.appKey),
+    ])
+  );
+}
+
+function getBuildscriptRepositories(vendorChannels?: VendorChannelConfig): string {
+  const flags = getProjectVendorFlags(vendorChannels);
+  const repositories: string[] = [];
+
+  if (flags.huawei) {
+    repositories.push(`maven { url 'https://developer.huawei.com/repo/' }`);
+  }
+
+  if (flags.honor) {
+    repositories.push(`maven { url 'https://developer.hihonor.com/repo' }`);
+  }
+
+  return repositories.join('\n        ');
+}
 
 /**
  * 获取厂商通道开启标记
@@ -150,7 +190,7 @@ export function applyAndroidProjectBuildGradle(
 
 export function withAndroidProjectBuildGradle(
   config: ExpoConfig,
-  props: { vendorChannels?: any }
+  props: { vendorChannels?: VendorChannelConfig }
 ): ExpoConfig {
   return withProjectBuildGradle(config, (config) => {
     const { vendorChannels } = props;

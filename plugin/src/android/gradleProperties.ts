@@ -5,8 +5,7 @@
 
 import { ExpoConfig } from 'expo/config';
 import { withGradleProperties } from 'expo/config-plugins';
-import { ResolvedJPushPluginProps } from '../types';
-import { getVendorChannels } from '../utils/vendorChannels';
+import { ResolvedJPushPluginProps, VendorChannelConfig } from '../types';
 
 type GradleProperty =
   | {
@@ -22,9 +21,10 @@ type GradleProperty =
       value: string;
     };
 
-export function applyAndroidGradleProperties(properties: GradleProperty[]): GradleProperty[] {
-  const vendorChannels = getVendorChannels();
-
+export function applyAndroidGradleProperties(
+  properties: GradleProperty[],
+  vendorChannels?: VendorChannelConfig
+): GradleProperty[] {
   if (!vendorChannels?.huawei?.enabled) {
     return properties;
   }
@@ -63,25 +63,10 @@ export function withAndroidGradleProperties(
   props: Pick<ResolvedJPushPluginProps, 'vendorChannels'>
 ): ExpoConfig {
   return withGradleProperties(config, (nextConfig) => {
-    if (props.vendorChannels?.huawei?.enabled === true) {
-      console.log(
-        '\n[MX_JPush_Expo] 配置 gradle.properties 华为 AGC 兼容性（Gradle 8.0）...'
-      );
-
-      const existingProp = nextConfig.modResults.find(
-        (prop) =>
-          prop.type === 'property' && prop.key === 'apmsInstrumentationEnabled'
-      );
-
-      if (!existingProp) {
-        nextConfig.modResults.push({
-          type: 'property',
-          key: 'apmsInstrumentationEnabled',
-          value: 'false',
-        });
-      }
-    }
-
+    nextConfig.modResults = applyAndroidGradleProperties(
+      nextConfig.modResults,
+      props.vendorChannels
+    );
     return nextConfig;
   });
 }
