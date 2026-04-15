@@ -11,22 +11,33 @@ import { setConfig } from '../src/utils/config';
 const readFixture = (fixturePath: string): string =>
   fs.readFileSync(path.join(__dirname, 'fixtures', fixturePath), 'utf8');
 
-describe('Android transforms', () => {
-  beforeEach(() => {
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', false, undefined);
-  });
+const TEST_APP_KEY = 'demo-app-key';
+const TEST_CHANNEL = 'demo-channel';
+const TEST_PACKAGE_NAME = 'com.demo.app';
 
+describe('Android transforms', () => {
   it('should inject app/build.gradle for enabled vendors and remain idempotent', () => {
     const vendorChannels = {
       fcm: { enabled: true },
       huawei: { enabled: true },
       xiaomi: { appId: 'xiaomi-id', appKey: 'xiaomi-key' },
     };
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', false, vendorChannels);
 
     const fixture = readFixture('android/app-build.gradle.fixture');
-    const transformed = applyAndroidAppBuildGradle(fixture, vendorChannels);
-    const repeated = applyAndroidAppBuildGradle(transformed, vendorChannels);
+    const transformed = applyAndroidAppBuildGradle(
+      fixture,
+      vendorChannels,
+      TEST_PACKAGE_NAME,
+      TEST_APP_KEY,
+      TEST_CHANNEL
+    );
+    const repeated = applyAndroidAppBuildGradle(
+      transformed,
+      vendorChannels,
+      TEST_PACKAGE_NAME,
+      TEST_APP_KEY,
+      TEST_CHANNEL
+    );
 
     expect(transformed).toContain('defaultConfig {');
     expect(transformed).toContain('manifestPlaceholders += [');
@@ -45,9 +56,21 @@ describe('Android transforms', () => {
       huawei: { enabled: true },
       oppo: { appId: 'oppo-id', appKey: 'oppo-key', appSecret: 'oppo-secret' },
     };
-    const enabled = applyAndroidAppBuildGradle(fixture, vendorConfig);
+    const enabled = applyAndroidAppBuildGradle(
+      fixture,
+      vendorConfig,
+      TEST_PACKAGE_NAME,
+      TEST_APP_KEY,
+      TEST_CHANNEL
+    );
 
-    const disabled = applyAndroidAppBuildGradle(enabled, undefined);
+    const disabled = applyAndroidAppBuildGradle(
+      enabled,
+      undefined,
+      TEST_PACKAGE_NAME,
+      TEST_APP_KEY,
+      TEST_CHANNEL
+    );
 
     expect(disabled).toContain(`implementation project(':jpush-react-native')`);
     expect(disabled).not.toContain(`com.google.firebase:firebase-messaging`);
@@ -97,7 +120,13 @@ describe('Android transforms', () => {
       comment: '//',
     }).contents;
 
-    const upgraded = applyAndroidAppBuildGradle(withLegacyFileTree, undefined);
+    const upgraded = applyAndroidAppBuildGradle(
+      withLegacyFileTree,
+      undefined,
+      TEST_PACKAGE_NAME,
+      TEST_APP_KEY,
+      TEST_CHANNEL
+    );
 
     expect(upgraded).not.toContain('@generated begin jpush-ndk-config');
     expect(upgraded).not.toContain('@generated begin jpush-libs-filetree');
@@ -130,7 +159,6 @@ describe('Android transforms', () => {
     expect(enabled).toContain(`https://developer.hihonor.com/repo`);
     expect(repeated).toBe(enabled);
 
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', false, undefined);
     const disabled = applyAndroidProjectBuildGradle(enabled);
 
     expect(disabled).not.toContain(`com.google.gms:google-services`);
@@ -140,12 +168,11 @@ describe('Android transforms', () => {
   });
 
   it('should remove legacy project/build.gradle generated sections during upgrade', () => {
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', false, {
+    const vendorChannels = {
       fcm: { enabled: true },
       huawei: { enabled: true },
       honor: { appId: 'honor-id' },
-    });
-
+    };
     const fixture = readFixture('android/project-build.gradle.fixture');
     const withLegacyBuildscriptHuawei = mergeContents({
       src: fixture,
@@ -189,7 +216,10 @@ describe('Android transforms', () => {
       comment: '//',
     }).contents;
 
-    const upgraded = applyAndroidProjectBuildGradle(withLegacyHonorAllprojects);
+    const upgraded = applyAndroidProjectBuildGradle(
+      withLegacyHonorAllprojects,
+      vendorChannels
+    );
 
     expect(upgraded).not.toContain('@generated begin jpush-huawei-maven-buildscript');
     expect(upgraded).not.toContain('@generated begin jpush-honor-maven-buildscript');
@@ -227,7 +257,7 @@ describe('Android transforms', () => {
   });
 
   it('should add gradle.properties compatibility only for Huawei', () => {
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', false, {
+    setConfig(TEST_APP_KEY, TEST_CHANNEL, TEST_PACKAGE_NAME, false, {
       huawei: { enabled: true },
     });
 
@@ -240,7 +270,7 @@ describe('Android transforms', () => {
       },
     ]);
 
-    setConfig('demo-app-key', 'demo-channel', 'com.demo.app', false, undefined);
+    setConfig(TEST_APP_KEY, TEST_CHANNEL, TEST_PACKAGE_NAME, false, undefined);
     const withoutHuawei = applyAndroidGradleProperties(withHuawei);
     expect(withoutHuawei).toBe(withHuawei);
   });
