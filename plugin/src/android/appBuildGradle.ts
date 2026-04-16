@@ -50,7 +50,6 @@ function removeLegacyGeneratedSections(contents: string, tags: string[]): string
   }, contents);
 }
 
-<<<<<<< HEAD
 function getResolvedConfig({
   packageName = '',
   appKey = '',
