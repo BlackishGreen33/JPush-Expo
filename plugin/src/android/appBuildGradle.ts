@@ -35,6 +35,13 @@ type ResolvedAndroidBuildGradleConfig = {
   vendorChannels?: VendorChannelConfig;
 };
 
+type AndroidBuildGradleConfigInput = {
+  packageName?: string;
+  appKey?: string;
+  channel?: string;
+  vendorChannels?: VendorChannelConfig;
+};
+
 const gradleEnv = (key: string, fallback = '""'): string =>
   `System.getenv("${key}") ?: (project.findProperty("${key}") ?: ${fallback})`;
 
@@ -44,12 +51,12 @@ function removeLegacyGeneratedSections(contents: string, tags: string[]): string
   }, contents);
 }
 
-function getResolvedConfig(
-  appKey?: string,
-  channel?: string,
-  packageName?: string,
-  vendorChannels?: VendorChannelConfig
-): ResolvedAndroidBuildGradleConfig {
+function getResolvedConfig({
+  packageName,
+  appKey,
+  channel,
+  vendorChannels,
+}: AndroidBuildGradleConfigInput): ResolvedAndroidBuildGradleConfig {
   const fallbackConfig = getConfig();
 
   return {
@@ -154,6 +161,8 @@ function getManifestPlaceholders(
   const valueIndent = `${indent}    `;
 
   return [
+    // Append after any host map so unrelated placeholders stay intact while
+    // JPUSH_* defaults can still take precedence when the same key is reused.
     `${indent}manifestPlaceholders += [`,
     placeholders
       .map((placeholder, index) => {
@@ -279,7 +288,12 @@ export function applyAndroidAppBuildGradle(
   appKey?: string,
   channel?: string
 ): string {
-  const resolvedConfig = getResolvedConfig(appKey, channel, packageName, vendorChannels);
+  const resolvedConfig = getResolvedConfig({
+    packageName,
+    appKey,
+    channel,
+    vendorChannels,
+  });
 
   let nextContents = removeLegacyGeneratedSections(contents, LEGACY_DEFAULT_CONFIG_TAGS);
   nextContents = ensureNestedBlock(nextContents, /^\s*android\s*\{/, 'defaultConfig');
